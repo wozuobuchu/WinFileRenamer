@@ -36,10 +36,23 @@ namespace ui {
 	// Define IDs for menu items and controls
 	constexpr int ID_FILE_OPEN = 1001;
 	constexpr int ID_FILE_CLEAR = 1002;
-
 	constexpr int ID_LISTVIEW = 1003;
 
-	constexpr int ID_OPTIONS_EXIT = 1004;
+	constexpr int ID_OPTIONS_SUBMIT = 9001;
+	constexpr int ID_OPTIONS_EXIT = 9002;
+
+	constexpr int ID_EDIT_PUSH_STR = 2001;
+	constexpr int ID_EDIT_PUSH_NUM = 2002;
+	constexpr int ID_EDIT_PUSH_IDX = 2003;
+	constexpr int ID_EDIT_PUSH_LB = 2004;
+	constexpr int ID_EDIT_PUSH_RB = 2005;
+	constexpr int ID_EDIT_PUSH_ADD = 2006;
+	constexpr int ID_EDIT_PUSH_SUB = 2007;
+	constexpr int ID_EDIT_PUSH_MUL = 2008;
+	constexpr int ID_EDIT_PUSH_DIV = 2009;
+	constexpr int ID_EDIT_PUSH_DEL = 2010;
+	constexpr int ID_EDIT_CLEAR = 2011;
+
 
 	std::stop_source sts_ui_;
 
@@ -218,22 +231,47 @@ namespace ui {
 
 		// --- Create the menu ---
 		HMENU hMenu = CreateMenu();
+
 		HMENU OptionMenu = CreatePopupMenu();
 		HMENU hFileMenu = CreatePopupMenu();
+		HMENU EditMenu = CreatePopupMenu();
 
 		// Append the "Exit" submenu to the options menu bar
-		//AppendMenu(OptionMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(OptionMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit"));
+		AppendMenu(OptionMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(OptionMenu, MF_STRING, ID_OPTIONS_EXIT, TEXT("Exit"));
 
 		// Append "Open" and "Clear" to the "File" submenu
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, TEXT("Open"));
+		AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, TEXT("Clear"));
+
+		// Append expression element to the "Edit" submenu
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_STR, TEXT("Push Wstring"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM, TEXT("Push Number"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ["));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB ]"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_ADD, TEXT("Push +"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_SUB, TEXT("Push -"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_MUL, TEXT("Push *"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_DIV, TEXT("Push /"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_DEL, TEXT("Delete"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_CLEAR, TEXT("Clear"));
 
 		// Append the "Options" submenu to the main menu bar
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)OptionMenu, TEXT("Option"));
 
 		// Append the "File" submenu to the main menu bar
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hFileMenu, TEXT("File"));
+
+		// Append the "Edit" submenu to the main menu bar
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)EditMenu, TEXT("Edit"));
 
 		// --- End menu creation ---
 
