@@ -14,13 +14,13 @@
 namespace pt {
 
 class ProcessThread {
-private:
-	static constexpr int STATE_INIT = 0;
-	static constexpr int STATE_READY = 1;
-	static constexpr int STATE_ONGOING = 2;
-	static constexpr int STATE_SUCCEEDED = 3;
-	static constexpr int STATE_FAILED = 4;
+public:
+	std::atomic<bool> msg_box_;
 
+	static constexpr int STATE_READY = 0;
+	static constexpr int STATE_ONGOING = 1;
+
+private:
 	std::atomic<int> state_;
 
 	std::shared_mutex vec_filepath_cache_smtx;
@@ -34,6 +34,8 @@ private:
 
 	std::thread rename_thread;
 	void rename_thread_assist() {
+		state_.store(STATE_ONGOING);
+
 		std::vector<std::wstring> vec_filepath;
 		std::vector<std::wstring> vec_newname;
 
@@ -44,21 +46,29 @@ private:
 
 		calc::var_index = 0;
 
+		bool calc_flag = true;
 		try {
 			std::shared_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
 			auto rpn_ptr = calc::generate_rpn(input_expr_ptr);
 			for (const auto& filepath : vec_filepath) vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn_ptr)));
-		} catch(std::runtime_error& re) {
+		} catch (std::runtime_error& re) {
 			std::wstringstream wss;
 			wss << re.what();
 			{
 				std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
 				res_wstr = wss.str();
 			}
-			return;
+			calc_flag = false;
 		}
 
-		// 
+		bool rename_flag = true;
+		if (calc_flag) {
+
+		}
+
+
+		state_.store(STATE_READY);
+		msg_box_.store(true);
 	}
 
 public:
@@ -67,7 +77,10 @@ public:
 
 	}
 
-	ProcessThread() { state_.store(STATE_INIT); }
+	ProcessThread() {
+		msg_box_.store(false);
+		state_.store(STATE_READY);
+	}
 
 	virtual ~ProcessThread() {
 		if (rename_thread.joinable()) {
@@ -110,9 +123,17 @@ public:
 		input_expr_ptr->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
 	}
 
+	std::wstring get_res_wstr() {
+		std::shared_lock<std::shared_mutex> lck(res_wstr_smtx);
+		return res_wstr;
+	}
+
+	int get_state() {
+		return state_.load();
+	}
 
 };
 
-}
+} // namespace pt
 
 #endif // !_PROCESS_THREAD_HPP

@@ -17,6 +17,12 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 		while (GetMessage(&msg, hwnd, 0, 0) && (!ui::sts_ui_.stop_requested())) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+
+			if(ui::pt_.msg_box_.load()) {
+				ui::pt_.msg_box_.store(false);
+				MessageBox(hwnd, ui::pt_.get_res_wstr().c_str(), TEXT("Result"), MB_ICONINFORMATION | MB_OK | MB_TOPMOST);
+			}
+
 		}
 
 	}
