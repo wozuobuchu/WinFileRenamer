@@ -130,7 +130,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="calc.hpp" />
-    <ClInclude Include="head_fpslimit.hpp" />
+    <ClInclude Include="process_thread.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ui.hpp" />
     <ClInclude Include="update_main.hpp" />

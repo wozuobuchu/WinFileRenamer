@@ -20,9 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="head_fpslimit.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="ui.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -33,6 +30,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="calc.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="process_thread.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
