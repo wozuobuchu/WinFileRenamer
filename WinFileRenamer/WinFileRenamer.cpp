@@ -4,5 +4,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	update_main_ui_LOOP(ui::register_main_ui(hInstance, hPrevInstance, lpCmdLine, nCmdShow));
 
+
 	return 0;
 }
