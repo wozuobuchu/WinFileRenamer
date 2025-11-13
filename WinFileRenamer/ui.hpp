@@ -57,6 +57,7 @@ namespace ui {
 	constexpr int ID_EDIT_PUSH_DEL = 2010;
 	constexpr int ID_EDIT_CLEAR = 2011;
 
+	// IDs for new controls
 	constexpr int ID_EXPR_DISPLAY = 3001;
 	constexpr int ID_INPUT_EDIT = 3002;
 
@@ -145,6 +146,20 @@ namespace ui {
 
 	LRESULT CALLBACK windowproc_main(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		switch (uMsg) {
+
+			
+		case WM_GETMINMAXINFO:
+		{
+			LPMINMAXINFO lpMinMaxInfo = (LPMINMAXINFO)lParam;
+			// Set a reasonable minimum tracking size
+			
+			lpMinMaxInfo->ptMinTrackSize.x = 600;
+			
+			lpMinMaxInfo->ptMinTrackSize.y = 400;
+			// We don't set ptMaxTrackSize, so the default (full screen) is the max.
+			return 0;
+		}
+
 		case WM_CREATE:
 		{
 			// Create the List View control (Top Half)
@@ -193,6 +208,9 @@ namespace ui {
 				NULL
 			);
 
+			// Add cue banner text to the input box
+			Edit_SetCueBannerText(hInputEdit_, L"Type string or number here, then click 'Edit' menu...");
+
 			return 0;
 		}
 
@@ -240,6 +258,7 @@ namespace ui {
 					SetWindowTextW(hInputEdit_, L""); // Clear input box
 				} catch (...) {
 					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR);
 				}
 				break;
 			}
@@ -290,12 +309,15 @@ namespace ui {
 			int height = HIWORD(lParam);
 			int editHeight = 40;
 			int displayY = height / 2;
+			// Make displayHeight beyond zero
 			int displayHeight = (height / 2) - editHeight;
+			if (displayHeight < 0) displayHeight = 0;
 
 			// Resize list view (top half)
 			if (hListView_) {
 				MoveWindow(hListView_, 0, 0, width, height / 2, TRUE);
-				ListView_SetColumnWidth(hListView_, 0, width);
+				
+				ListView_SetColumnWidth(hListView_, 0, width - 20);
 			}
 
 			// Resize expression display (bottom half, top part)
@@ -330,6 +352,7 @@ namespace ui {
 		// Initialize common controls
 		INITCOMMONCONTROLSEX icex;
 		icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+		// Also load standard classes (EDIT, STATIC, BUTTON, etc.)
 		icex.dwICC = ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES;
 		InitCommonControlsEx(&icex);
 
@@ -409,7 +432,7 @@ namespace ui {
 			WS_EX_CLIENTEDGE,
 			wndclass->lpszClassName,
 			TEXT("WinFileRename"),
-			(WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX),
+			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			UI_WIDTH, UI_HEIGHT,
 			NULL,
