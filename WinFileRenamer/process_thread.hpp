@@ -50,6 +50,8 @@ private:
 		bool calc_flag = false;
 		try {
 			std::shared_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+			// Check if pointer is valid before generating
+			if (!input_expr_ptr) throw std::runtime_error("Expression is empty!");
 			auto rpn_ptr = calc::generate_rpn(input_expr_ptr);
 			for (const auto& filepath : vec_filepath) vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn_ptr)));
 			calc_flag = true;
@@ -116,14 +118,16 @@ public:
 
 	bool process_lunch() {
 		if (state_.load() == STATE_ONGOING) return false;
-		if(rename_thread.joinable()) rename_thread.join();
-		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist,this));
+		if (rename_thread.joinable()) rename_thread.join();
+		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist, this));
 		return true;
 	}
 
 	ProcessThread() {
 		msg_box_.store(false);
 		state_.store(STATE_READY);
+		// Initialize the expression pointer.
+		input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
 	}
 
 	virtual ~ProcessThread() {
@@ -146,13 +150,18 @@ public:
 
 	void reset_input_expr_ptr() {
 		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
-		input_expr_ptr->clear();
-		input_expr_ptr.reset();
+		// Check before clearing, or re-create if null
+		if (input_expr_ptr) {
+			input_expr_ptr->clear();
+		} else {
+			input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+		}
 	}
 
 	void pop_expr_ptr() {
 		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
-		if (!input_expr_ptr->empty()) {
+		// Check for valid pointer and non-empty vector
+		if (input_expr_ptr && !input_expr_ptr->empty()) {
 			input_expr_ptr->pop_back();
 		}
 	}
@@ -160,6 +169,10 @@ public:
 	template <typename PtrType, typename... Args>
 	void push_expr(Args&&... args) {
 		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		// Check in case pointer was reset
+		if (!input_expr_ptr) {
+			input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+		}
 		input_expr_ptr->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
 	}
 
@@ -170,6 +183,42 @@ public:
 
 	int get_state() {
 		return state_.load();
+	}
+
+	std::wstring get_expression_str() {
+		std::shared_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		if (!input_expr_ptr) {
+			return L"";
+		}
+
+		std::wstringstream wss;
+		for (const auto& elem : *input_expr_ptr) {
+			int64_t type = elem->get_type();
+			try {
+				if (type == 'S') {
+					wss << L"\"" << elem->get_str() << L"\" ";
+				} else if (type == 'Z') {
+					wss << elem->get_str() << L" ";
+				} else if (type == 'X') {
+					auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
+					if (var_ptr->get_var_type() == 'I') {
+						wss << L"INDEX ";
+					} else {
+						wss << L"VAR ";
+					}
+				} else if (type == '(') {
+					wss << L"( ";
+				} else if (type == ')') {
+					wss << L") ";
+				} else if (type == '#') {
+					auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
+					wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
+				}
+			} catch (...) {
+				wss << L"?ERROR? ";
+			}
+		}
+		return wss.str();
 	}
 
 };
