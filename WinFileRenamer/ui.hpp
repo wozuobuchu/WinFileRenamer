@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cmath>
 #include <sstream>
+#include <exception>
 
 #include "calc.hpp"
 #include "process_thread.hpp"
@@ -53,6 +54,9 @@ namespace ui {
 	constexpr int ID_EDIT_PUSH_DEL = 2010;
 	constexpr int ID_EDIT_CLEAR = 2011;
 
+	constexpr int ID_EXPR_DISPLAY = 3001;
+	constexpr int ID_INPUT_EDIT = 3002;
+
 
 	std::stop_source sts_ui_;
 
@@ -60,11 +64,22 @@ namespace ui {
 
 	// Handle for the list view control
 	static HWND hListView_ = NULL;
+	// Handles for new controls
+	static HWND hExprDisplay_ = NULL;
+	static HWND hInputEdit_ = NULL;
 
 	struct RegisterReturn {
 		WNDCLASSEX* wndclass;
 		HWND hwnd;
 	};
+
+	// Helper function to update the expression display
+	inline void UpdateExpressionDisplay() {
+		if (hExprDisplay_) {
+			std::wstring exprStr = pt_.get_expression_str();
+			SetWindowTextW(hExprDisplay_, exprStr.c_str());
+		}
+	}
 
 	// Helper function to add a file path to the list view
 	inline void AddFileToList(const std::wstring& filePath) {
@@ -109,7 +124,8 @@ namespace ui {
 			if (*p == 0) {
 				// Only one file was selected. 'dir' holds the full path.
 				AddFileToList(dir);
-			} else {
+			}
+			else {
 				// Multiple files were selected.
 				// Loop through the subsequent null-terminated file names.
 				while (*p) {
@@ -128,13 +144,13 @@ namespace ui {
 		switch (uMsg) {
 		case WM_CREATE:
 		{
-			// Create the List View control when the window is created
+			// Create the List View control (Top Half)
 			hListView_ = CreateWindowEx(
 				WS_EX_CLIENTEDGE,
 				WC_LISTVIEWW, // Use the wide-character version
 				L"",
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | LVS_REPORT | LVS_SHOWSELALWAYS,
-				0, 0, UI_WIDTH, UI_HEIGHT, // Will be resized by WM_SIZE
+				0, 0, UI_WIDTH, UI_HEIGHT / 2, // Initial size (top half)
 				hwnd,
 				(HMENU)(UINT_PTR)ID_LISTVIEW,
 				GetModuleHandle(NULL),
@@ -147,6 +163,32 @@ namespace ui {
 			lvc.cx = UI_WIDTH - 20; // Initial width
 			lvc.pszText = (LPWSTR)L"Selected Files";
 			ListView_InsertColumn(hListView_, 0, &lvc);
+
+			// Create Expression Display (Bottom Half - Top)
+			hExprDisplay_ = CreateWindowEx(
+				0,
+				L"STATIC", // Static text control
+				L"",       // Initial text
+				WS_CHILD | WS_VISIBLE | WS_BORDER | SS_LEFT | WS_VSCROLL,
+				0, UI_HEIGHT / 2, UI_WIDTH, (UI_HEIGHT / 2) - 40, // Initial size
+				hwnd,
+				(HMENU)(UINT_PTR)ID_EXPR_DISPLAY,
+				GetModuleHandle(NULL),
+				NULL
+			);
+
+			// Create Input Edit Box (Bottom-most)
+			hInputEdit_ = CreateWindowEx(
+				WS_EX_CLIENTEDGE,
+				L"EDIT",
+				L"",
+				WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+				0, UI_HEIGHT - 40, UI_WIDTH, 40, // Initial size
+				hwnd,
+				(HMENU)(UINT_PTR)ID_INPUT_EDIT,
+				GetModuleHandle(NULL),
+				NULL
+			);
 
 			return 0;
 		}
@@ -163,10 +205,76 @@ namespace ui {
 				ListView_DeleteAllItems(hListView_);
 				pt_.reset_selected_file();
 				break;
-				// Exit the application
+			case ID_OPTIONS_SUBMIT:
+				// Call the process_lunch function
+				if (!pt_.process_lunch()) {
+					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+				}
+				break;
 			case ID_OPTIONS_EXIT:
 				PostQuitMessage(0);
 				sts_ui_.request_stop();
+				break;
+
+				// Handlers for Edit Menu
+			case ID_EDIT_PUSH_STR:
+			{
+				wchar_t buffer[256] = { 0 };
+				GetWindowTextW(hInputEdit_, buffer, 256);
+				pt_.push_expr<calc::Str>(std::wstring(buffer));
+				UpdateExpressionDisplay();
+				SetWindowTextW(hInputEdit_, L""); // Clear input box
+				break;
+			}
+			case ID_EDIT_PUSH_NUM:
+			{
+				wchar_t buffer[256] = { 0 };
+				GetWindowTextW(hInputEdit_, buffer, 256);
+				try {
+					int64_t val = std::stoll(std::wstring(buffer));
+					pt_.push_expr<calc::Int64>(val);
+					UpdateExpressionDisplay();
+					SetWindowTextW(hInputEdit_, L""); // Clear input box
+				} catch (...) {
+					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+				}
+				break;
+			}
+			case ID_EDIT_PUSH_IDX:
+				pt_.push_expr<calc::Index_Var>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_LB:
+				pt_.push_expr<calc::Lbracket>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_RB:
+				pt_.push_expr<calc::Rbracket>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_ADD:
+				pt_.push_expr<calc::Add_Int64Opt>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_SUB:
+				pt_.push_expr<calc::Sub_Int64Opt>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_MUL:
+				pt_.push_expr<calc::Mul_Int64Opt>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_DIV:
+				pt_.push_expr<calc::Div_Int64Opt>();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_PUSH_DEL:
+				pt_.pop_expr_ptr();
+				UpdateExpressionDisplay();
+				break;
+			case ID_EDIT_CLEAR:
+				pt_.reset_input_expr_ptr();
+				UpdateExpressionDisplay();
 				break;
 			}
 			return 0;
@@ -174,14 +282,33 @@ namespace ui {
 
 		case WM_SIZE:
 		{
-			// Resize the list view to fill the half client area
+			// Resize all three controls
+			int width = LOWORD(lParam);
+			int height = HIWORD(lParam);
+			int editHeight = 40;
+			int displayY = height / 2;
+			int displayHeight = (height / 2) - editHeight;
+
+			// Resize list view (top half)
 			if (hListView_) {
-				int width = LOWORD(lParam);
-				int height = HIWORD(lParam);
 				MoveWindow(hListView_, 0, 0, width, height / 2, TRUE);
-				// Resize the column to match the new width
 				ListView_SetColumnWidth(hListView_, 0, width);
 			}
+
+			// Resize expression display (bottom half, top part)
+			if (hExprDisplay_) {
+				MoveWindow(hExprDisplay_, 0, displayY, width, displayHeight, TRUE);
+			}
+
+			// Resize input edit box (bottom-most part)
+			if (hInputEdit_) {
+				MoveWindow(hInputEdit_, 0, displayY + displayHeight, width, editHeight, TRUE);
+			}
+
+			if (hInputEdit_) {
+				Edit_SetCueBannerText(hInputEdit_, L"Type string or number here, click 'Edit' menu to push expression element...");
+			}
+
 			return 0;
 		}
 
@@ -252,8 +379,8 @@ namespace ui {
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ["));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB ]"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ("));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB )"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_ADD, TEXT("Push +"));
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_SUB, TEXT("Push -"));
