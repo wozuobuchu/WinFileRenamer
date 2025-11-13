@@ -66,7 +66,6 @@ private:
 
 		bool rename_flag = false;
 		size_t vsize = vec_filepath.size();
-		size_t success_cnt = 0;
 		if (calc_flag) {
 			try {
 				size_t vsize = vec_filepath.size();
@@ -74,7 +73,6 @@ private:
 					if (!std::filesystem::exists(vec_filepath[i])) throw std::runtime_error("File doesn't exist !");
 					if (std::filesystem::exists(vec_newname[i])) throw std::runtime_error("Target file already exists !");
 					std::filesystem::rename(vec_filepath[i], vec_newname[i]);
-					++success_cnt;
 				}
 				rename_flag = true;
 			} catch (const std::filesystem::filesystem_error& e) {
@@ -103,7 +101,7 @@ private:
 
 		if (rename_flag && calc_flag) {
 			std::wstringstream wss;
-			wss << L"Successfully renamed " << success_cnt << L" / " << vsize << L" files.";
+			wss << L"Successfully renamed " << vsize << L" files.";
 			{
 				std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
 				res_wstr = wss.str();
