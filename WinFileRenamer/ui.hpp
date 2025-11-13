@@ -136,7 +136,7 @@ namespace ui {
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | LVS_REPORT | LVS_SHOWSELALWAYS,
 				0, 0, UI_WIDTH, UI_HEIGHT, // Will be resized by WM_SIZE
 				hwnd,
-				(HMENU)ID_LISTVIEW,
+				(HMENU)(UINT_PTR)ID_LISTVIEW,
 				GetModuleHandle(NULL),
 				NULL
 			);
