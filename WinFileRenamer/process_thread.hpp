@@ -24,13 +24,13 @@ public:
 private:
 	std::atomic<int> state_;
 
-	std::shared_mutex vec_filepath_cache_smtx;
+	std::mutex vec_filepath_cache_mtx;
 	std::vector<std::wstring> vec_filepath_cache;
 
-	std::shared_mutex input_expr_ptr_smtx;
+	std::mutex input_expr_ptr_mtx;
 	std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> input_expr_ptr;
 
-	std::shared_mutex res_wstr_smtx;
+	std::mutex res_wstr_mtx;
 	std::wstring res_wstr;
 
 	std::thread rename_thread;
@@ -41,25 +41,28 @@ private:
 		std::vector<std::wstring> vec_newname;
 
 		{
-			std::shared_lock<std::shared_mutex> lck(vec_filepath_cache_smtx);
+			std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
 			vec_filepath = vec_filepath_cache;
 		}
 
-		calc::var_index = 0;
-
 		bool calc_flag = false;
 		try {
-			std::shared_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+			std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
 			// Check if pointer is valid before generating
 			if (!input_expr_ptr) throw std::runtime_error("Expression is empty!");
 			auto rpn_ptr = calc::generate_rpn(input_expr_ptr);
-			for (const auto& filepath : vec_filepath) vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn_ptr)));
+			
+			for (size_t var_idex = 0; var_idex < vec_filepath.size(); ++var_idex) {
+				const std::wstring& ofname = vec_filepath[var_idex];
+				vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn_ptr, var_idex, ofname)));
+			}
+
 			calc_flag = true;
 		} catch (const std::runtime_error& re) {
 			std::wstringstream wss;
 			wss << re.what();
 			{
-				std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
+				std::unique_lock<std::mutex> lck(res_wstr_mtx);
 				res_wstr = wss.str();
 			}
 		}
@@ -79,21 +82,21 @@ private:
 				std::wstringstream wss;
 				wss << e.what();
 				{
-					std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
+					std::unique_lock<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			} catch (const std::runtime_error& re) {
 				std::wstringstream wss;
 				wss << re.what();
 				{
-					std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
+					std::unique_lock<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			} catch (...) {
 				std::wstringstream wss;
 				wss << "Unknown Error !";
 				{
-					std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
+					std::unique_lock<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			}
@@ -103,7 +106,7 @@ private:
 			std::wstringstream wss;
 			wss << L"Successfully renamed " << vsize << L" files.";
 			{
-				std::unique_lock<std::shared_mutex> lck(res_wstr_smtx);
+				std::unique_lock<std::mutex> lck(res_wstr_mtx);
 				res_wstr = wss.str();
 			}
 		}
@@ -136,18 +139,18 @@ public:
 
 	void reset_selected_file() {
 		{
-			std::unique_lock<std::shared_mutex> lck(vec_filepath_cache_smtx);
+			std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
 			vec_filepath_cache.clear();
 		}
 	}
 
 	void push_filepath(const std::wstring& filepath) {
-		std::unique_lock<std::shared_mutex> lck(vec_filepath_cache_smtx);
+		std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
 		vec_filepath_cache.emplace_back(filepath);
 	}
 
 	void reset_input_expr_ptr() {
-		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
 		// Check before clearing, or re-create if null
 		if (input_expr_ptr) {
 			input_expr_ptr->clear();
@@ -157,7 +160,7 @@ public:
 	}
 
 	void pop_expr_ptr() {
-		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
 		// Check for valid pointer and non-empty vector
 		if (input_expr_ptr && !input_expr_ptr->empty()) {
 			input_expr_ptr->pop_back();
@@ -166,7 +169,7 @@ public:
 
 	template <typename PtrType, typename... Args>
 	void push_expr(Args&&... args) {
-		std::unique_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
 		// Check in case pointer was reset
 		if (!input_expr_ptr) {
 			input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
@@ -175,7 +178,7 @@ public:
 	}
 
 	std::wstring get_res_wstr() {
-		std::shared_lock<std::shared_mutex> lck(res_wstr_smtx);
+		std::unique_lock<std::mutex> lck(res_wstr_mtx);
 		return res_wstr;
 	}
 
@@ -184,7 +187,7 @@ public:
 	}
 
 	std::wstring get_expression_str() {
-		std::shared_lock<std::shared_mutex> lck(input_expr_ptr_smtx);
+		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
 		if (!input_expr_ptr) {
 			return L"";
 		}
@@ -199,8 +202,11 @@ public:
 					wss << elem->get_str() << L" ";
 				} else if (type == 'X') {
 					auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
-					if (var_ptr->get_var_type() == 'I') {
+					int64_t var_type = var_ptr->get_var_type();
+					if (var_type == 'I') {
 						wss << L"INDEX ";
+					} else if (var_type == 'F') {
+						wss << L"OFNAME ";
 					} else {
 						wss << L"VAR ";
 					}
@@ -219,6 +225,11 @@ public:
 		return wss.str();
 	}
 
+	void join() {
+		if(rename_thread.joinable()) {
+			rename_thread.join();
+		}
+	}
 };
 
 } // namespace pt

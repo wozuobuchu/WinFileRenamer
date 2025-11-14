@@ -48,14 +48,15 @@ namespace ui {
 	constexpr int ID_EDIT_PUSH_STR = 2001;
 	constexpr int ID_EDIT_PUSH_NUM = 2002;
 	constexpr int ID_EDIT_PUSH_IDX = 2003;
-	constexpr int ID_EDIT_PUSH_LB = 2004;
-	constexpr int ID_EDIT_PUSH_RB = 2005;
-	constexpr int ID_EDIT_PUSH_ADD = 2006;
-	constexpr int ID_EDIT_PUSH_SUB = 2007;
-	constexpr int ID_EDIT_PUSH_MUL = 2008;
-	constexpr int ID_EDIT_PUSH_DIV = 2009;
-	constexpr int ID_EDIT_PUSH_DEL = 2010;
-	constexpr int ID_EDIT_CLEAR = 2011;
+	constexpr int ID_EDIT_PUSH_OFNAME = 2004;
+	constexpr int ID_EDIT_PUSH_LB = 2005;
+	constexpr int ID_EDIT_PUSH_RB = 2006;
+	constexpr int ID_EDIT_PUSH_ADD = 2007;
+	constexpr int ID_EDIT_PUSH_SUB = 2008;
+	constexpr int ID_EDIT_PUSH_MUL = 2009;
+	constexpr int ID_EDIT_PUSH_DIV = 2010;
+	constexpr int ID_EDIT_PUSH_DEL = 2011;
+	constexpr int ID_EDIT_CLEAR = 2012;
 
 	// IDs for new controls
 	constexpr int ID_EXPR_DISPLAY = 3001;
@@ -128,8 +129,7 @@ namespace ui {
 			if (*p == 0) {
 				// Only one file was selected. 'dir' holds the full path.
 				AddFileToList(dir);
-			}
-			else {
+			} else {
 				// Multiple files were selected.
 				// Loop through the subsequent null-terminated file names.
 				while (*p) {
@@ -147,6 +147,16 @@ namespace ui {
 	LRESULT CALLBACK windowproc_main(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		switch (uMsg) {
 
+		case WM_SYSCOMMAND:
+		{
+			if (wParam == SC_CLOSE) {
+				pt_.join();
+				PostQuitMessage(0);
+				sts_ui_.request_stop();
+				return 0;
+			}
+			break;
+		}
 			
 		case WM_GETMINMAXINFO:
 		{
@@ -265,6 +275,10 @@ namespace ui {
 				pt_.push_expr<calc::Index_Var>();
 				UpdateExpressionDisplay();
 				break;
+			case ID_EDIT_PUSH_OFNAME:
+				pt_.push_expr<calc::OriginFileName_Var>();
+				UpdateExpressionDisplay();
+				break;
 			case ID_EDIT_PUSH_LB:
 				pt_.push_expr<calc::Lbracket>();
 				UpdateExpressionDisplay();
@@ -337,6 +351,7 @@ namespace ui {
 		}
 
 		case WM_DESTROY:
+			pt_.join();
 			PostQuitMessage(0);
 			sts_ui_.request_stop();
 			return 0;
@@ -403,6 +418,7 @@ namespace ui {
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM, TEXT("Push Number"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_OFNAME, TEXT("Push OriginFileName"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ("));
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB )"));

@@ -268,7 +268,13 @@ public:
     constexpr int64_t get_var_type() override { return 'I'; }
 };
 
-
+class OriginFileName_Var final : public Var {
+public:
+    OriginFileName_Var() = default;
+    virtual ~OriginFileName_Var() {}
+    virtual std::shared_ptr<Element> clone() override { return std::make_shared<OriginFileName_Var>(*this); }
+	constexpr int64_t get_var_type() override { return 'F'; }
+};
 
 
 std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> generate_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> expr_ptr) {
@@ -299,12 +305,10 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> generate_rpn(std::s
                 if (top_type == '(') {
                     flag = true;
                     break;
-                }
-                else if (top_type == ')') {
+                } else if (top_type == ')') {
                     flag = false;
                     break;
-                }
-                else if (top_type == '#') {
+                } else if (top_type == '#') {
                     ret->emplace_back(top_ptr);
                     ++opt_cnt;
                 }
@@ -358,8 +362,7 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> generate_rpn(std::s
 
 
 
-int64_t var_index = 0;
-std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> rpn_ptr) {
+std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> rpn_ptr, int64_t var_index, const std::wstring& fname) {
     auto ret = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
     const std::vector<std::shared_ptr<calc::Element>>& rpn = *rpn_ptr;
 
@@ -367,8 +370,11 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std:
         int64_t type = ptr->get_type();
         if (type == 'X') {
             auto var_ptr = std::static_pointer_cast<calc::Var>(ptr);
-            if (var_ptr->get_var_type() == 'I') {
+			int64_t var_type = var_ptr->get_var_type();
+            if (var_type == 'I') {
                 ret->emplace_back(std::make_shared<calc::Int64>(var_index));
+            } else if (var_type == 'F') {
+				ret->emplace_back(std::make_shared<calc::Str>(fname));
             } else {
                 throw std::runtime_error("Unknown variable type in RPN !");
             }
@@ -376,8 +382,6 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std:
             ret->emplace_back(ptr);
         }
     }
-
-    ++var_index;
 
     return ret;
 }
