@@ -28,9 +28,19 @@
 // Link the common controls library
 #pragma comment(lib, "Comctl32.lib")
 
+#define NEW_UI_MANIFEST
+
+
+
+#ifdef NEW_UI_MANIFEST
+
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
+#endif
+
+
 
 namespace ui {
 
@@ -157,14 +167,14 @@ namespace ui {
 			}
 			break;
 		}
-			
+
 		case WM_GETMINMAXINFO:
 		{
 			LPMINMAXINFO lpMinMaxInfo = (LPMINMAXINFO)lParam;
 			// Set a reasonable minimum tracking size
-			
+
 			lpMinMaxInfo->ptMinTrackSize.x = 600;
-			
+
 			lpMinMaxInfo->ptMinTrackSize.y = 400;
 			// We don't set ptMaxTrackSize, so the default (full screen) is the max.
 			return 0;
@@ -210,16 +220,13 @@ namespace ui {
 				WS_EX_CLIENTEDGE,
 				L"EDIT",
 				L"",
-				WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+				WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE,
 				0, UI_HEIGHT - 40, UI_WIDTH, 40, // Initial size
 				hwnd,
 				(HMENU)(UINT_PTR)ID_INPUT_EDIT,
 				GetModuleHandle(NULL),
 				NULL
 			);
-
-			// Add cue banner text to the input box
-			Edit_SetCueBannerText(hInputEdit_, L"Type string or number here, then click 'Edit' menu...");
 
 			return 0;
 		}
@@ -329,7 +336,7 @@ namespace ui {
 			// Resize list view (top half)
 			if (hListView_) {
 				MoveWindow(hListView_, 0, 0, width, height / 2, TRUE);
-				
+
 				ListView_SetColumnWidth(hListView_, 0, width - 20);
 			}
 
@@ -343,10 +350,6 @@ namespace ui {
 				MoveWindow(hInputEdit_, 0, displayY + displayHeight, width, editHeight, TRUE);
 			}
 
-			if (hInputEdit_) {
-				Edit_SetCueBannerText(hInputEdit_, L"Type string or number here, click 'Edit' menu to push expression element...");
-			}
-
 			return 0;
 		}
 
@@ -358,6 +361,7 @@ namespace ui {
 		default:
 			break;
 		}
+
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 

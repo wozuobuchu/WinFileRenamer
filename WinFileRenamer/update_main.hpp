@@ -14,7 +14,7 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 		UpdateWindow(hwnd);
 
 		MSG msg{ 0 };
-		while (GetMessage(&msg, hwnd, 0, 0) && (!ui::sts_ui_.stop_requested())) {
+		while (GetMessage(&msg, NULL, 0, 0) && (!ui::sts_ui_.stop_requested())) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 
