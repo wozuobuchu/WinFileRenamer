@@ -11,6 +11,7 @@
 #include <sstream>
 #include <cstdint>
 #include <filesystem>
+#include <unordered_map>
 
 namespace pt {
 
@@ -192,37 +193,80 @@ public:
 			return L"";
 		}
 
-		std::wstringstream wss;
-		for (const auto& elem : *input_expr_ptr) {
-			int64_t type = elem->get_type();
-			try {
-				if (type == 'S') {
-					wss << L"\"" << elem->get_str() << L"\" ";
-				} else if (type == 'Z') {
-					wss << elem->get_str() << L" ";
-				} else if (type == 'X') {
+		static std::unordered_map< int64_t, std::function< std::wstring( const std::shared_ptr<calc::Element>& ) > > func_umap {
+			{
+				'S',
+				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					auto str_ptr = std::static_pointer_cast<calc::Str>(elem);
+					return L"\"" + str_ptr->get_str() + L"\" ";
+				}
+			},
+			{
+				'Z',
+				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					auto int_ptr = std::static_pointer_cast<calc::Int64>(elem);
+					return int_ptr->get_str() + L" ";
+				}
+			},
+			{
+				'X',
+				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
 					auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
 					int64_t var_type = var_ptr->get_var_type();
 					if (var_type == 'I') {
-						wss << L"INDEX ";
-					} else if (var_type == 'F') {
-						wss << L"OFNAME ";
+						return L"INDEX ";
+					} else if (var_type == 'N') {
+						return L"OFNAME ";
 					} else {
-						wss << L"VAR ";
+						throw std::runtime_error("Unknown variable type in expression !");
 					}
-				} else if (type == '(') {
-					wss << L"( ";
-				} else if (type == ')') {
-					wss << L") ";
-				} else if (type == '#') {
-					auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
-					wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
 				}
+			},
+			{
+				'(',
+				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					return L"( ";
+				}
+			},
+			{
+				')',
+				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					return L") ";
+				}
+			},
+			{
+				'#',
+				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
+					std::wstringstream wss;
+					wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
+					return wss.str();
+				}
+			},
+			{
+				'F',
+				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+					auto fptr = std::static_pointer_cast<calc::Int64_Format>(elem);
+					std::wstringstream wss;
+					wss << L"NUM_FORMAT_" << fptr->get_min_length() << L" ";
+					return wss.str();
+				}
+			},
+		};
+
+		std::wstringstream rewss;
+		for (const auto& elem : *input_expr_ptr) {
+			int64_t type = elem->get_type();
+			try {
+				rewss << func_umap.at(type)(elem);
 			} catch (...) {
-				wss << L"?ERROR? ";
+				rewss << L"UNKNOWN ERROR? ";
 			}
+
+
 		}
-		return wss.str();
+
+		return rewss.str();
 	}
 
 	void join() {

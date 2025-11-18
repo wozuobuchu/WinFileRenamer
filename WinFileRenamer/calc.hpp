@@ -38,9 +38,6 @@ public:
     }
 };
 
-class Str;
-class Int64;
-
 class Str final : public Element {
 private:
     friend class Int64;
@@ -87,6 +84,16 @@ public:
         return out;
     }
 
+};
+
+class Int64_Format final : public Element {
+public:
+    Int64_Format() = default;
+    Int64_Format(int64_t minimumLength) { data = minimumLength; }
+    virtual ~Int64_Format() {}
+    constexpr int64_t get_type() override { return 'F'; }
+    virtual std::shared_ptr<Element> clone() override { return std::make_shared<Int64_Format>(*this); }
+    int64_t get_min_length() const { return data; }
 };
 
 class Lbracket final : public Element {
@@ -217,11 +224,49 @@ public:
     virtual std::shared_ptr<Element> clone() override { return std::make_shared<Mul_Int64Opt>(*this); }
 
     virtual std::shared_ptr<Element> do_opt(std::shared_ptr<Element> ptr1, std::shared_ptr<Element> ptr2) override {
+
+        static std::function<int64_t(std::shared_ptr<calc::Int64>)> cnt_num_len = [] (std::shared_ptr<calc::Int64> iptr) -> int64_t {
+            int64_t n = iptr->get_val();
+            if (n == 0) return 1;
+            int64_t cnt = 0;
+            while (n > 0) {
+                n /= 10;
+                ++cnt;
+            }
+            return cnt;
+        };
+
         int64_t type1 = ptr1->get_type();
         int64_t type2 = ptr2->get_type();
         if (type1 == 'Z' && type2 == 'Z') {
             std::shared_ptr<Int64> res = std::make_shared<Int64>(*(std::static_pointer_cast<Int64>(ptr1)) * *(std::static_pointer_cast<Int64>(ptr2)));
             return std::static_pointer_cast<Element>(res);
+        } else if (type1 == 'Z' && type2 == 'F') {
+            std::wstringstream wss;
+
+			auto num_ptr = std::static_pointer_cast<Int64>(ptr1);
+            auto fmt_ptr = std::static_pointer_cast<Int64_Format>(ptr2);
+
+			int64_t expected_len = fmt_ptr->get_min_length();
+			int64_t num_len = cnt_num_len(num_ptr);
+            for (int64_t i = 0; i < expected_len - num_len; ++i) wss << "0";
+			wss << num_ptr->get_val();
+
+			return std::static_pointer_cast<Element>(std::make_shared<Str>(wss.str()));
+
+        } else if (type1 == 'F' && type2 == 'Z') {
+            std::wstringstream wss;
+
+            auto num_ptr = std::static_pointer_cast<Int64>(ptr2);
+            auto fmt_ptr = std::static_pointer_cast<Int64_Format>(ptr1);
+
+            int64_t expected_len = fmt_ptr->get_min_length();
+            int64_t num_len = cnt_num_len(num_ptr);
+            for (int64_t i = 0; i < expected_len - num_len; ++i) wss << "0";
+            wss << num_ptr->get_val();
+
+            return std::static_pointer_cast<Element>(std::make_shared<Str>(wss.str()));
+
         }
 
         throw std::runtime_error("Illegal operator type \"Mul\" !");
@@ -273,7 +318,7 @@ public:
     OriginFileName_Var() = default;
     virtual ~OriginFileName_Var() {}
     virtual std::shared_ptr<Element> clone() override { return std::make_shared<OriginFileName_Var>(*this); }
-	constexpr int64_t get_var_type() override { return 'F'; }
+	constexpr int64_t get_var_type() override { return 'N'; }
 };
 
 
@@ -288,7 +333,7 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> generate_rpn(std::s
 
     for (auto ptr : expr) {
         int64_t type = ptr->get_type();
-        if (type == 'Z' || type == 'S' || type == 'X') {
+        if (type == 'Z' || type == 'S' || type == 'X' || type == 'F') {
             ret->emplace_back(ptr);
             ++obj_cnt;
 
@@ -373,7 +418,7 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std:
 			int64_t var_type = var_ptr->get_var_type();
             if (var_type == 'I') {
                 ret->emplace_back(std::make_shared<calc::Int64>(var_index));
-            } else if (var_type == 'F') {
+            } else if (var_type == 'N') {
 				ret->emplace_back(std::make_shared<calc::Str>(fname));
             } else {
                 throw std::runtime_error("Unknown variable type in RPN !");
@@ -396,7 +441,7 @@ std::wstring calculate_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Ele
 
     for (auto ptr : rpn) {
         int64_t type = ptr->get_type();
-        if (type == 'Z' || type == 'S') {
+        if (type == 'Z' || type == 'S' || type == 'F') {
             stk.push(ptr);
 
         } else if (type == '#') {

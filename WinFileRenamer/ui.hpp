@@ -1,6 +1,7 @@
 #ifndef _UI_HPP_
 #define _UI_HPP_
 
+#include "resource.h"
 #include <Windows.h>
 #include <CommCtrl.h>
 #include <commdlg.h>
@@ -47,12 +48,11 @@ namespace ui {
 	constexpr int UI_WIDTH = 1280;
 	constexpr int UI_HEIGHT = 720;
 
-	// Define IDs for menu items and controls
 	constexpr int ID_FILE_OPEN = 1001;
 	constexpr int ID_FILE_CLEAR = 1002;
 	constexpr int ID_LISTVIEW = 1003;
+	constexpr int ID_OPTIONS_SUBMIT = 1004;
 
-	constexpr int ID_OPTIONS_SUBMIT = 9001;
 	constexpr int ID_OPTIONS_EXIT = 9002;
 
 	constexpr int ID_EDIT_PUSH_STR = 2001;
@@ -66,11 +66,11 @@ namespace ui {
 	constexpr int ID_EDIT_PUSH_MUL = 2009;
 	constexpr int ID_EDIT_PUSH_DIV = 2010;
 	constexpr int ID_EDIT_PUSH_DEL = 2011;
-	constexpr int ID_EDIT_CLEAR = 2012;
+	constexpr int ID_EDIT_PUSH_NUM_FORMAT = 2012;
+	constexpr int ID_EDIT_CLEAR = 2013;
 
-	// IDs for new controls
-	constexpr int ID_EXPR_DISPLAY = 3001;
-	constexpr int ID_INPUT_EDIT = 3002;
+	constexpr int ID_EXPR_DISPLAY = 8001;
+	constexpr int ID_INPUT_EDIT = 8002;
 
 
 	std::stop_source sts_ui_;
@@ -90,9 +90,13 @@ namespace ui {
 
 	// Helper function to update the expression display
 	inline void UpdateExpressionDisplay() {
-		if (hExprDisplay_) {
-			std::wstring exprStr = pt_.get_expression_str();
-			SetWindowTextW(hExprDisplay_, exprStr.c_str());
+		try {
+			if (hExprDisplay_) {
+				std::wstring exprStr = pt_.get_expression_str();
+				SetWindowTextW(hExprDisplay_, exprStr.c_str());
+			}
+		} catch (...) {
+			MessageBox(NULL, L"UI Update error!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 		}
 	}
 
@@ -286,6 +290,21 @@ namespace ui {
 				pt_.push_expr<calc::OriginFileName_Var>();
 				UpdateExpressionDisplay();
 				break;
+			case ID_EDIT_PUSH_NUM_FORMAT:
+			{
+				wchar_t buffer[256] = { 0 };
+				GetWindowTextW(hInputEdit_, buffer, 256);
+				try {
+					int64_t val = std::stoll(std::wstring(buffer));
+					pt_.push_expr<calc::Int64_Format>(val);
+					UpdateExpressionDisplay();
+					SetWindowTextW(hInputEdit_, L""); // Clear input box
+				}
+				catch (...) {
+					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+				}
+				break;
+			}
 			case ID_EDIT_PUSH_LB:
 				pt_.push_expr<calc::Lbracket>();
 				UpdateExpressionDisplay();
@@ -387,12 +406,12 @@ namespace ui {
 		wndclass->cbClsExtra = NULL;
 		wndclass->cbWndExtra = NULL;
 		wndclass->hInstance = hInstance;
-		wndclass->hIcon = NULL;
+		wndclass->hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 		wndclass->hCursor = LoadCursor(NULL, IDC_ARROW);
 		wndclass->hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // Standard window background
 		wndclass->lpszMenuName = NULL; // We set the menu on the window, not the class
 		wndclass->lpszClassName = TEXT("MainUIWindowClass");
-		wndclass->hIconSm = NULL;
+		wndclass->hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
 		if (!RegisterClassEx(wndclass)) {
 			MessageBox(NULL, TEXT("Failed to register window."), TEXT("Error"), MB_ICONWARNING | MB_OK);
@@ -408,21 +427,21 @@ namespace ui {
 		HMENU EditMenu = CreatePopupMenu();
 
 		// Append the "Exit" submenu to the options menu bar
-		AppendMenu(OptionMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit"));
-		AppendMenu(OptionMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(OptionMenu, MF_STRING, ID_OPTIONS_EXIT, TEXT("Exit"));
 
 		// Append "Open" and "Clear" to the "File" submenu
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, TEXT("Open"));
-		AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, TEXT("Clear"));
+		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit"));
 
 		// Append expression element to the "Edit" submenu
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_STR, TEXT("Push Wstring"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM, TEXT("Push Number"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_STR, TEXT("Push Wstring [ STR ] [ INPUT ]"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM, TEXT("Push Number  [ INT ] [ INPUT ]"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_OFNAME, TEXT("Push OriginFileName"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index [ VAR ]"));
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_OFNAME, TEXT("Push OriginFileName [ VAR ]"));
+		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM_FORMAT, TEXT("Push MinimunNumLength [ FMT*INT -> STR ] [ INPUT ]"));
 		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ("));
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB )"));

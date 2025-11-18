@@ -135,6 +135,12 @@
     <ClInclude Include="ui.hpp" />
     <ClInclude Include="update_main.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="WinFileRenamer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\Users\enjoy\Pictures\ICO\folder_windows\folder_windows_9767.ico" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
