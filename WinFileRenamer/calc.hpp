@@ -14,6 +14,7 @@
 #include <string>
 #include <exception>
 #include <sstream>
+#include <filesystem>
 
 #include <thread>
 #include <chrono>
@@ -419,7 +420,8 @@ std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std:
             if (var_type == 'I') {
                 ret->emplace_back(std::make_shared<calc::Int64>(var_index));
             } else if (var_type == 'N') {
-				ret->emplace_back(std::make_shared<calc::Str>(fname));
+				std::filesystem::path ofp = fname;
+                ret->emplace_back( std::make_shared<calc::Str>(ofp.filename().wstring()) );
             } else {
                 throw std::runtime_error("Unknown variable type in RPN !");
             }
