@@ -47,7 +47,7 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\README.txt">
+    <Text Include="..\README.md">
       <Filter>源文件</Filter>
     </Text>
   </ItemGroup>
