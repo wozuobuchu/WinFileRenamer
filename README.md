@@ -26,7 +26,7 @@ A Windows GUI executable to rename files in batches, with custom expression supp
      - Push Number [INT]: insert a number, type in the input box.
      - Push Index [VAR]: adds the index of the file (starts from 0).
      - Push OriginFileName [VAR]: adds the original file name (no extension).
-     - Push MinimunNumLength [FMT*INT -> STR]: pads an integer to minimum length, type the length.
+     - Push MinimunNumLength [FMT*INT -> STR]: pads an integer to minimum length, type the length, it should multiply a number.
      - Parentheses, and mathematical operators (+, -, *, /) are supported.
      - Use Delete to remove the last element, or Clear to reset the expression.
 
@@ -39,7 +39,7 @@ A Windows GUI executable to rename files in batches, with custom expression supp
 
 #### Example Expression
 - Add index to all filenames, padded to 3 digits:  
-  `INDEX`, `NUM_FORMAT_3`, `*`, `OFNAME`, `+`
+  `INDEX`, `*`, `NUM_FORMAT_3`, `+`, `OFNAME`  
 
 ---
 
@@ -65,7 +65,7 @@ A Windows GUI executable to rename files in batches, with custom expression supp
      - Push Number [INT]：插入数字，输入后点击添加。
      - Push Index [VAR]：添加文件顺序号（从0开始）。
      - Push OriginFileName [VAR]：添加原始文件名（不带后缀）。
-     - Push MinimunNumLength [FMT*INT -> STR]：将数字最少填充为指定长度，用于补零。
+     - Push MinimunNumLength [FMT*INT -> STR]：将数字最少填充为指定长度, 用于补零, 需要和一个数相乘。
      - 可插入括号与加减乘除运算符。
      - 用 Delete 删除最后一项，Clear 清空表达式。
 
@@ -78,7 +78,7 @@ A Windows GUI executable to rename files in batches, with custom expression supp
 
 #### 示例表达式
 - 批量为文件名加上三位数序号：  
-  依次添加 `INDEX`，`NUM_FORMAT_3`，`*`，`OFNAME`，`+`
+  依次添加 `INDEX`, `*`, `NUM_FORMAT_3`, `+`, `OFNAME`  
 
 ---
 
