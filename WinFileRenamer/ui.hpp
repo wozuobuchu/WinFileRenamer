@@ -423,12 +423,12 @@ namespace ui {
 			return 0;
 		}
 
-		case WM_SIZE:
+        case WM_SIZE:
 		{
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
 
-			int topHeight = height / 2;
+			int topHeight = (height * 3) / 5;
 			int bottomHeight = height - topHeight;
 
 			if (topHeight < LABEL_HEIGHT + 8) topHeight = LABEL_HEIGHT + 8;
@@ -445,12 +445,14 @@ namespace ui {
 			int contentX = (width - contentWidth) / 2;
 
 			if (hLabelFileList_) {
-				MoveWindow(hLabelFileList_,
+				MoveWindow(
+					hLabelFileList_,
 					contentX,
 					4,
 					contentWidth,
 					LABEL_HEIGHT,
-					TRUE);
+					TRUE
+				);
 			}
 
 			if (hListView_) {
@@ -458,12 +460,14 @@ namespace ui {
 				int listHeight = topHeight - (LABEL_HEIGHT + 4);
 				if (listHeight < 0) listHeight = 0;
 
-				MoveWindow(hListView_,
+				MoveWindow(
+					hListView_,
 					contentX,
 					listY,
 					contentWidth,
 					listHeight,
-					TRUE);
+					TRUE
+				);
 
 				ListView_SetColumnWidth(hListView_, 0, contentWidth - 4);
 			}
@@ -480,7 +484,20 @@ namespace ui {
 			}
 
 			int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
-			int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
+
+			int bottomClientBottom = height;
+			int availableBottom = bottomClientBottom - exprDisplayY - 4;
+			if (availableBottom < LABEL_HEIGHT + 24) availableBottom = LABEL_HEIGHT + 24;
+
+			int exprDisplayHeight = availableBottom / 3;
+			const int MIN_EXPR_HEIGHT = 40;
+			const int MIN_INPUT_HEIGHT = 40;
+
+			if (exprDisplayHeight < MIN_EXPR_HEIGHT)
+				exprDisplayHeight = MIN_EXPR_HEIGHT;
+			if (exprDisplayHeight > availableBottom - (LABEL_HEIGHT + MIN_INPUT_HEIGHT))
+				exprDisplayHeight = availableBottom - (LABEL_HEIGHT + MIN_INPUT_HEIGHT);
+
 			if (exprDisplayHeight < 0) exprDisplayHeight = 0;
 
 			if (hExprDisplay_) {
@@ -494,8 +511,7 @@ namespace ui {
 				);
 			}
 
-			int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
-			if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
+			int inputLabelY = exprDisplayY + exprDisplayHeight + 4;
 
 			if (hLabelInput_) {
 				MoveWindow(
@@ -509,7 +525,11 @@ namespace ui {
 			}
 
 			int inputEditY = inputLabelY + LABEL_HEIGHT;
-			if (inputEditY + INPUT_HEIGHT > height) inputEditY = height - INPUT_HEIGHT;
+			int inputHeight = bottomClientBottom - inputEditY - 4;
+			if (inputHeight < MIN_INPUT_HEIGHT)
+				inputHeight = MIN_INPUT_HEIGHT;
+			if (inputEditY + inputHeight > height)
+				inputEditY = height - inputHeight;
 
 			if (hInputEdit_) {
 				MoveWindow(
@@ -517,7 +537,7 @@ namespace ui {
 					contentX,
 					inputEditY,
 					contentWidth,
-					INPUT_HEIGHT,
+					inputHeight,
 					TRUE
 				);
 			}
