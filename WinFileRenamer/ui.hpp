@@ -29,19 +29,9 @@
 // Link the common controls library
 #pragma comment(lib, "Comctl32.lib")
 
-#define NEW_UI_MANIFEST
-
-
-
-#ifdef NEW_UI_MANIFEST
-
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
-#endif
-
-
 
 namespace ui {
 
@@ -373,12 +363,16 @@ namespace ui {
 		}
 
 		case WM_DESTROY:
+		{
 			pt_.join();
 			PostQuitMessage(0);
 			sts_ui_.request_stop();
 			return 0;
+		}
+
 		default:
 			break;
+
 		}
 
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
