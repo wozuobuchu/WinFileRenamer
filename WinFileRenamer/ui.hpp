@@ -73,6 +73,13 @@ namespace ui {
 	static HWND hExprDisplay_ = NULL;
 	static HWND hInputEdit_ = NULL;
 
+	static HWND hLabelFileList_ = NULL;
+	static HWND hLabelExpr_ = NULL;
+	static HWND hLabelInput_ = NULL;
+
+	constexpr int LABEL_HEIGHT = 24;
+	constexpr int INPUT_HEIGHT = 40;
+
 	struct RegisterReturn {
 		WNDCLASSEX* wndclass;
 		HWND hwnd;
@@ -176,54 +183,136 @@ namespace ui {
 
 		case WM_CREATE:
 		{
+			HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+
+			hLabelFileList_ = CreateWindowEx(
+				0,
+				L"STATIC",
+				L"Selected Files",
+				WS_CHILD | WS_VISIBLE | SS_LEFT,
+				8, 4, UI_WIDTH - 16, LABEL_HEIGHT,
+				hwnd,
+				NULL,
+				GetModuleHandle(NULL),
+				NULL
+			);
+
 			// Create the List View control (Top Half)
+			int topHeight = UI_HEIGHT / 2;
+
 			hListView_ = CreateWindowEx(
 				WS_EX_CLIENTEDGE,
 				WC_LISTVIEWW, // Use the wide-character version
 				L"",
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | LVS_REPORT | LVS_SHOWSELALWAYS,
-				0, 0, UI_WIDTH, UI_HEIGHT / 2, // Initial size (top half)
+				0, LABEL_HEIGHT + 4,
+				UI_WIDTH,
+				topHeight - (LABEL_HEIGHT + 4),
 				hwnd,
 				(HMENU)(UINT_PTR)ID_LISTVIEW,
 				GetModuleHandle(NULL),
 				NULL
 			);
 
+			DWORD exStyle = ListView_GetExtendedListViewStyle(hListView_);
+			exStyle |= LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER;
+			ListView_SetExtendedListViewStyle(hListView_, exStyle);
+
 			// Initialize the list view columns
 			LVCOLUMNW lvc = { 0 };
 			lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
 			lvc.cx = UI_WIDTH - 20; // Initial width
-			lvc.pszText = (LPWSTR)L"Selected Files";
+			lvc.pszText = (LPWSTR)L"File Path";
 			ListView_InsertColumn(hListView_, 0, &lvc);
 
-			// Create Expression Display (Bottom Half - Top)
-			hExprDisplay_ = CreateWindowEx(
+			HWND hHeader = ListView_GetHeader(hListView_);
+			if (hHeader)
+			{
+				LONG style = GetWindowLong(hHeader, GWL_STYLE);
+
+				style &= ~HDS_HOTTRACK;
+				style &= ~HDS_BUTTONS;
+
+				SetWindowLong(hHeader, GWL_STYLE, style);
+
+				InvalidateRect(hHeader, NULL, TRUE);
+			}
+
+			int bottomY = topHeight;
+			int bottomHeight = UI_HEIGHT - topHeight;
+
+			hLabelExpr_ = CreateWindowEx(
 				0,
+				L"STATIC",
+				L"Expression Preview",
+				WS_CHILD | WS_VISIBLE | SS_LEFT,
+				8, bottomY + 4,
+				UI_WIDTH - 16, LABEL_HEIGHT,
+				hwnd,
+				NULL,
+				GetModuleHandle(NULL),
+				NULL
+			);
+
+			// Create Expression Display (Bottom Half - Top)
+			int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
+			int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
+			if (exprDisplayHeight < 0) exprDisplayHeight = 0;
+
+			hExprDisplay_ = CreateWindowEx(
+				WS_EX_CLIENTEDGE,
 				L"STATIC", // Static text control
 				L"",       // Initial text
-				WS_CHILD | WS_VISIBLE | WS_BORDER | SS_LEFT | WS_VSCROLL,
-				0, UI_HEIGHT / 2, UI_WIDTH, (UI_HEIGHT / 2) - 40, // Initial size
+				WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX | WS_VSCROLL,
+				0, exprDisplayY, UI_WIDTH, exprDisplayHeight,
 				hwnd,
 				(HMENU)(UINT_PTR)ID_EXPR_DISPLAY,
 				GetModuleHandle(NULL),
 				NULL
 			);
 
-			// Create Input Edit Box (Bottom-most)
+			int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
+			if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
+
+			hLabelInput_ = CreateWindowEx(
+				0,
+				L"STATIC",
+				L"Input",
+				WS_CHILD | WS_VISIBLE | SS_LEFT,
+				8, inputLabelY,
+				UI_WIDTH - 16, LABEL_HEIGHT,
+				hwnd,
+				NULL,
+				GetModuleHandle(NULL),
+				NULL
+			);
+
+			int inputEditY = inputLabelY + LABEL_HEIGHT;
+
 			hInputEdit_ = CreateWindowEx(
 				WS_EX_CLIENTEDGE,
 				L"EDIT",
 				L"",
 				WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE,
-				0, UI_HEIGHT - 40, UI_WIDTH, 40, // Initial size
+				0, inputEditY, UI_WIDTH, INPUT_HEIGHT, // Initial size
 				hwnd,
 				(HMENU)(UINT_PTR)ID_INPUT_EDIT,
 				GetModuleHandle(NULL),
 				NULL
 			);
 
+			if (hFont) {
+				SendMessage(hLabelFileList_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				SendMessage(hLabelExpr_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				SendMessage(hLabelInput_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				SendMessage(hListView_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				SendMessage(hExprDisplay_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
+			}
+
 			return 0;
 		}
+
 
 		case WM_COMMAND:
 		{
@@ -333,33 +422,66 @@ namespace ui {
 
 		case WM_SIZE:
 		{
-			// Resize all three controls
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
-			int editHeight = 40;
-			int displayY = height / 2;
-			// Make displayHeight beyond zero
-			int displayHeight = (height / 2) - editHeight;
-			if (displayHeight < 0) displayHeight = 0;
 
-			// Resize list view (top half)
+			int topHeight = height / 2;
+			int bottomHeight = height - topHeight;
+
+			if (topHeight < LABEL_HEIGHT + 8) topHeight = LABEL_HEIGHT + 8;
+			if (bottomHeight < LABEL_HEIGHT + INPUT_HEIGHT + 8)
+				bottomHeight = LABEL_HEIGHT + INPUT_HEIGHT + 8;
+
+			if (hLabelFileList_) {
+				MoveWindow(hLabelFileList_, 8, 4, width - 16, LABEL_HEIGHT, TRUE);
+			}
+
 			if (hListView_) {
-				MoveWindow(hListView_, 0, 0, width, height / 2, TRUE);
+				int listY = LABEL_HEIGHT + 4;
+				int listHeight = topHeight - (LABEL_HEIGHT + 4);
+				if (listHeight < 0) listHeight = 0;
 
+				MoveWindow(hListView_, 0, listY, width, listHeight, TRUE);
 				ListView_SetColumnWidth(hListView_, 0, width - 20);
 			}
 
-			// Resize expression display (bottom half, top part)
-			if (hExprDisplay_) {
-				MoveWindow(hExprDisplay_, 0, displayY, width, displayHeight, TRUE);
+			int bottomY = topHeight;
+
+			if (hLabelExpr_) {
+				MoveWindow(hLabelExpr_, 8, bottomY + 4, width - 16, LABEL_HEIGHT, TRUE);
 			}
 
-			// Resize input edit box (bottom-most part)
+			int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
+			int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
+			if (exprDisplayHeight < 0) exprDisplayHeight = 0;
+
+			if (hExprDisplay_) {
+				MoveWindow(hExprDisplay_, 0, exprDisplayY, width, exprDisplayHeight, TRUE);
+			}
+
+			int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
+			if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
+
+			if (hLabelInput_) {
+				MoveWindow(hLabelInput_, 8, inputLabelY, width - 16, LABEL_HEIGHT, TRUE);
+			}
+
+			int inputEditY = inputLabelY + LABEL_HEIGHT;
+			if (inputEditY + INPUT_HEIGHT > height) inputEditY = height - INPUT_HEIGHT;
+
 			if (hInputEdit_) {
-				MoveWindow(hInputEdit_, 0, displayY + displayHeight, width, editHeight, TRUE);
+				MoveWindow(hInputEdit_, 0, inputEditY, width, INPUT_HEIGHT, TRUE);
 			}
 
 			return 0;
+		}
+
+		case WM_CTLCOLORSTATIC:
+		{
+			HDC hdc = (HDC)wParam;
+			SetBkMode(hdc, TRANSPARENT);
+			SetTextColor(hdc, RGB(0, 0, 0));
+			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
 		}
 
 		case WM_DESTROY:
@@ -426,7 +548,7 @@ namespace ui {
 		// Append "Open" and "Clear" to the "File" submenu
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, TEXT("Open"));
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, TEXT("Clear"));
-		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit"));
+		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit Rename"));
 
 		// Append expression element to the "Edit" submenu
 		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_STR, TEXT("Push Wstring [ STR ] [ INPUT ]"));
@@ -463,7 +585,7 @@ namespace ui {
 		HWND hwnd = CreateWindowEx(
 			WS_EX_CLIENTEDGE,
 			wndclass->lpszClassName,
-			TEXT("WinFileRename"),
+			TEXT("WinFileRenamer"),
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			UI_WIDTH, UI_HEIGHT,
