@@ -1,4 +1,4 @@
-# WinFileRenamer
+﻿# WinFileRenamer
 
 一个基于 **表达式/公式** 的批量重命名工具，通过 Win32 原生界面实现，可对一次选中的多个文件按统一规则重命名。
 

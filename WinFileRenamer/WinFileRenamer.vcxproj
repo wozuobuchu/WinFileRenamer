@@ -140,9 +140,14 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\Users\enjoy\Pictures\ICO\folder_windows\folder_windows_9767.ico" />
+    <Image Include="..\img\cover.png" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README_en-US.md" />
+    <None Include="..\README_zh-CN.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
