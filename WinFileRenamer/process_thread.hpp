@@ -15,6 +15,27 @@
 
 namespace pt {
 
+static std::wstring MakeLongPath(const std::wstring& path) {
+	// If already in long path format, return as is
+	if (path.rfind(L"\\\\?\\", 0) == 0) {
+		return path;
+	}
+
+	// Handle UNC paths
+	if (path.size() >= 2 && path[0] == L'\\' && path[1] == L'\\') {
+		// \\server\share\xxx  ->  \\?\UNC\server\share\xxx
+		return L"\\\\?\\UNC\\" + path.substr(2);
+	}
+
+	// Handle drive letter paths
+	if (path.size() >= 2 && path[1] == L':') {
+		return L"\\\\?\\" + path;
+	}
+
+	// For other paths, return as is (could be relative paths)
+	return path;
+}
+
 class ProcessThread {
 public:
 	std::atomic<bool> msg_box_;
@@ -34,7 +55,7 @@ private:
 	std::mutex res_wstr_mtx;
 	std::wstring res_wstr;
 
-	wchar_t* old_dir_ptr;
+	std::wstring old_dir;
 
 	std::thread rename_thread;
 	void rename_thread_assist() {
@@ -74,11 +95,15 @@ private:
 		size_t vsize = vec_filepath.size();
 		if (calc_flag) {
 			try {
-				size_t vsize = vec_filepath.size();
 				for (size_t i = 0; i < vsize; ++i) {
-					if (!std::filesystem::exists(vec_filepath[i])) throw std::runtime_error("File doesn't exist !");
-					if (std::filesystem::exists(vec_newname[i])) throw std::runtime_error("Target file already exists !");
-					std::filesystem::rename(vec_filepath[i], vec_newname[i]);
+
+					std::filesystem::path src(MakeLongPath(vec_filepath[i]));
+					std::filesystem::path dst(MakeLongPath(vec_newname[i]));
+
+					if (!std::filesystem::exists(src)) throw std::runtime_error("File doesn't exist !");
+					if (std::filesystem::exists(dst)) throw std::runtime_error("Target file already exists !");
+
+					std::filesystem::rename(src, dst);
 				}
 				rename_flag = true;
 			} catch (const std::filesystem::filesystem_error& e) {
@@ -116,15 +141,19 @@ private:
 
 		state_.store(STATE_READY);
 		msg_box_.store(true);
-		SetCurrentDirectoryW(old_dir_ptr);
+		SetCurrentDirectoryW(old_dir.c_str());
 	}
 
 public:
 
-	bool process_lunch(wchar_t* oldDir) {
+	void set_old_dir(const std::wstring& dir) {
+		old_dir = MakeLongPath(dir);
+	}
+
+	bool process_lunch() {
 		if (state_.load() == STATE_ONGOING) return false;
 		if (rename_thread.joinable()) rename_thread.join();
-		old_dir_ptr = oldDir;
+		
 		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist, this));
 		return true;
 	}

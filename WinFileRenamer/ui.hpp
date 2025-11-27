@@ -83,7 +83,7 @@ namespace ui {
 	constexpr int CONTENT_MARGIN_H = 40;
 	constexpr int CONTENT_MAX_WIDTH = 1000;
 
-	wchar_t oldDir[MAX_PATH];
+	inline std::wstring oldDir;
 
 	struct RegisterReturn {
 		WNDCLASSEX* wndclass;
@@ -120,14 +120,16 @@ namespace ui {
 	// Helper function to handle the "Open File" dialog logic
 	inline void HandleFileOpen(HWND hwnd) {
 		// Heap memory
-		std::unique_ptr<wchar_t[]> szFile = std::make_unique<wchar_t[]>(8192);
-		std::memset(szFile.get(), 0, 8192 * sizeof(wchar_t));
+		constexpr DWORD OPENFILENAME_BUFFER = 32767;
+		std::unique_ptr<wchar_t[]> szFile = std::make_unique<wchar_t[]>(OPENFILENAME_BUFFER);
+		std::memset(szFile.get(), 0, OPENFILENAME_BUFFER * sizeof(wchar_t));
 
 		OPENFILENAMEW ofn = { 0 };
 		ofn.lStructSize = sizeof(OPENFILENAMEW);
 		ofn.hwndOwner = hwnd;
 		ofn.lpstrFile = szFile.get();
-		ofn.nMaxFile = 8192;
+		ofn.nMaxFile = OPENFILENAME_BUFFER;
+
 		ofn.lpstrFilter = L"All Files (*.*)\0*.*\0";
 		ofn.nFilterIndex = 1;
 		ofn.lpstrFileTitle = NULL;
@@ -333,7 +335,7 @@ namespace ui {
 				break;
 			case ID_OPTIONS_SUBMIT:
 				// Call the process_lunch function
-				if (!pt_.process_lunch(ui::oldDir)) {
+				if (!pt_.process_lunch()) {
 					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 				}
 				break;
@@ -573,7 +575,18 @@ namespace ui {
 
 	RegisterReturn register_main_ui(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
 
-		GetCurrentDirectoryW(MAX_PATH, ui::oldDir);
+		// Store the current directory
+		DWORD len = GetCurrentDirectoryW(0, nullptr);
+		if (len != 0) {
+			std::wstring buffer(len, L'\0');
+			DWORD realLen = GetCurrentDirectoryW(len, buffer.data());
+			if (realLen != 0) {
+				buffer.resize(realLen);
+				ui::oldDir = std::move(buffer);
+			}
+		}
+
+		pt_.set_old_dir(ui::oldDir);
 
 		// Initialize common controls
 		INITCOMMONCONTROLSEX icex;
