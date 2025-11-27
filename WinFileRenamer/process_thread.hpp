@@ -34,6 +34,8 @@ private:
 	std::mutex res_wstr_mtx;
 	std::wstring res_wstr;
 
+	wchar_t* old_dir_ptr;
+
 	std::thread rename_thread;
 	void rename_thread_assist() {
 		state_.store(STATE_ONGOING);
@@ -114,13 +116,15 @@ private:
 
 		state_.store(STATE_READY);
 		msg_box_.store(true);
+		SetCurrentDirectoryW(old_dir_ptr);
 	}
 
 public:
 
-	bool process_lunch() {
+	bool process_lunch(wchar_t* oldDir) {
 		if (state_.load() == STATE_ONGOING) return false;
 		if (rename_thread.joinable()) rename_thread.join();
+		old_dir_ptr = oldDir;
 		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist, this));
 		return true;
 	}

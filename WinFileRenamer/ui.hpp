@@ -83,6 +83,8 @@ namespace ui {
 	constexpr int CONTENT_MARGIN_H = 40;
 	constexpr int CONTENT_MAX_WIDTH = 1000;
 
+	wchar_t oldDir[MAX_PATH];
+
 	struct RegisterReturn {
 		WNDCLASSEX* wndclass;
 		HWND hwnd;
@@ -331,7 +333,7 @@ namespace ui {
 				break;
 			case ID_OPTIONS_SUBMIT:
 				// Call the process_lunch function
-				if (!pt_.process_lunch()) {
+				if (!pt_.process_lunch(ui::oldDir)) {
 					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 				}
 				break;
@@ -570,6 +572,8 @@ namespace ui {
 	}
 
 	RegisterReturn register_main_ui(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
+
+		GetCurrentDirectoryW(MAX_PATH, ui::oldDir);
 
 		// Initialize common controls
 		INITCOMMONCONTROLSEX icex;
