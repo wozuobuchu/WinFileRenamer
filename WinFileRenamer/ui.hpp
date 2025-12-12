@@ -1,7 +1,7 @@
 #ifndef _UI_HPP_
 #define _UI_HPP_
 
-#include "resource.h"
+#include "resource1.h"
 #include <Windows.h>
 #include <CommCtrl.h>
 #include <commdlg.h>

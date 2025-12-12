@@ -8,6 +8,9 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 	WNDCLASSEX* wndclass = rrt.wndclass;
 	HWND hwnd = rrt.hwnd;
 
+	calc::warmup_operator_tables();
+	ui::pt_.prewarm_expr_table();
+
 	if (!ui::sts_ui_.stop_requested()) {
 
 		ShowWindow(hwnd, SW_SHOWDEFAULT);

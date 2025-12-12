@@ -302,6 +302,10 @@ public:
 		return rewss.str();
 	}
 
+	void prewarm_expr_table() {
+		(void)get_expression_str();
+	}
+
 	void join() {
 		if(rename_thread.joinable()) {
 			rename_thread.join();

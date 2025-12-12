@@ -32,21 +32,16 @@
     <ClInclude Include="process_thread.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="resource1.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="WinFileRenamer.rc">
-      <Filter>资源文件</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\..\..\Users\enjoy\Pictures\ICO\folder_windows\folder_windows_9767.ico">
-      <Filter>资源文件</Filter>
-    </Image>
     <Image Include="..\img\cover.png">
       <Filter>源文件</Filter>
+    </Image>
+    <Image Include="icon1.ico">
+      <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
@@ -66,5 +61,10 @@
     <Manifest Include="app.manifest">
       <Filter>资源文件</Filter>
     </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="WinFileRenamer.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
