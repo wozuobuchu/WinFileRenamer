@@ -65,13 +65,13 @@ private:
 		std::vector<std::wstring> vec_newname;
 
 		{
-			std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
+			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
 			vec_filepath = vec_filepath_cache;
 		}
 
 		bool calc_flag = false;
 		try {
-			std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
+			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
 			// Check if pointer is valid before generating
 			if (!input_expr_ptr) throw std::runtime_error("Expression is empty!");
 			auto rpn_ptr = calc::generate_rpn(input_expr_ptr);
@@ -86,7 +86,7 @@ private:
 			std::wstringstream wss;
 			wss << re.what();
 			{
-				std::unique_lock<std::mutex> lck(res_wstr_mtx);
+				std::lock_guard<std::mutex> lck(res_wstr_mtx);
 				res_wstr = wss.str();
 			}
 		}
@@ -110,21 +110,21 @@ private:
 				std::wstringstream wss;
 				wss << e.what();
 				{
-					std::unique_lock<std::mutex> lck(res_wstr_mtx);
+					std::lock_guard<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			} catch (const std::runtime_error& re) {
 				std::wstringstream wss;
 				wss << re.what();
 				{
-					std::unique_lock<std::mutex> lck(res_wstr_mtx);
+					std::lock_guard<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			} catch (...) {
 				std::wstringstream wss;
 				wss << "Unknown Error !";
 				{
-					std::unique_lock<std::mutex> lck(res_wstr_mtx);
+					std::lock_guard<std::mutex> lck(res_wstr_mtx);
 					res_wstr = wss.str();
 				}
 			}
@@ -134,7 +134,7 @@ private:
 			std::wstringstream wss;
 			wss << L"Successfully renamed " << vsize << L" files.";
 			{
-				std::unique_lock<std::mutex> lck(res_wstr_mtx);
+				std::lock_guard<std::mutex> lck(res_wstr_mtx);
 				res_wstr = wss.str();
 			}
 		}
@@ -167,7 +167,7 @@ private:
 				if (var_type == 'I') {
 					return L"INDEX ";
 				} else if (var_type == 'N') {
-				 return L"OFNAME ";
+					return L"OFNAME ";
 				} else {
 					throw std::runtime_error("Unknown variable type in expression !");
 				}
@@ -235,48 +235,77 @@ public:
 		}
 	}
 
-	void reset_selected_file() {
+	bool reset_selected_file() {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
+
 		{
-			std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
+			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
 			vec_filepath_cache.clear();
 		}
+
+		return true;
 	}
 
-	void push_filepath(const std::wstring& filepath) {
-		std::unique_lock<std::mutex> lck(vec_filepath_cache_mtx);
-		vec_filepath_cache.emplace_back(filepath);
-	}
+	bool push_filepath(const std::wstring& filepath) {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
-	void reset_input_expr_ptr() {
-		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
-		// Check before clearing, or re-create if null
-		if (input_expr_ptr) {
-			input_expr_ptr->clear();
-		} else {
-			input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+		{
+			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
+			vec_filepath_cache.emplace_back(filepath);
 		}
+
+		return true;
 	}
 
-	void pop_expr_ptr() {
-		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
-		// Check for valid pointer and non-empty vector
-		if (input_expr_ptr && !input_expr_ptr->empty()) {
-			input_expr_ptr->pop_back();
+	bool reset_input_expr_ptr() {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
+
+		{
+			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
+			// Check before clearing, or re-create if null
+			if (input_expr_ptr) {
+				input_expr_ptr->clear();
+			}
+			else {
+				input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+			}
 		}
+
+		return true;
+	}
+
+	bool pop_expr_ptr() {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
+
+		{
+			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
+			// Check for valid pointer and non-empty vector
+			if (input_expr_ptr && !input_expr_ptr->empty()) {
+				input_expr_ptr->pop_back();
+			}
+		}
+
+		return true;
 	}
 
 	template <typename PtrType, typename... Args>
-	void push_expr(Args&&... args) {
-		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
-		// Check in case pointer was reset
-		if (!input_expr_ptr) {
-			input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+	bool push_expr(Args&&... args) {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
+
+		{
+			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
+			// Check in case pointer was reset
+			if (!input_expr_ptr) {
+				input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
+			}
+			input_expr_ptr->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
 		}
-		input_expr_ptr->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
+
+		return true;
 	}
 
 	std::wstring get_res_wstr() {
-		std::unique_lock<std::mutex> lck(res_wstr_mtx);
+		std::lock_guard<std::mutex> lck(res_wstr_mtx);
 		return res_wstr;
 	}
 
@@ -289,7 +318,9 @@ public:
 	}
 
 	std::wstring get_expression_str() {
-		std::unique_lock<std::mutex> lck(input_expr_ptr_mtx);
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return L"?";
+
+		std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
 		if (!input_expr_ptr) {
 			return L"";
 		}
