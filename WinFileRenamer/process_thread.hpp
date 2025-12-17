@@ -38,12 +38,12 @@ static std::wstring MakeLongPath(const std::wstring& path) {
 
 class ProcessThread {
 public:
-	std::atomic<bool> msg_box_;
-
 	static constexpr int STATE_READY = 0;
 	static constexpr int STATE_ONGOING = 1;
 
 private:
+	std::atomic<bool> msg_box_;
+
 	std::atomic<int> state_;
 
 	std::mutex vec_filepath_cache_mtx;
@@ -55,11 +55,11 @@ private:
 	std::mutex res_wstr_mtx;
 	std::wstring res_wstr;
 
-	std::wstring old_dir;
+	inline static std::wstring old_dir;
 
 	std::thread rename_thread;
 	void rename_thread_assist() {
-		state_.store(STATE_ONGOING);
+		state_.store(STATE_ONGOING, std::memory_order_release);
 
 		std::vector<std::wstring> vec_filepath;
 		std::vector<std::wstring> vec_newname;
@@ -139,28 +139,92 @@ private:
 			}
 		}
 
-		state_.store(STATE_READY);
-		msg_box_.store(true);
-		SetCurrentDirectoryW(old_dir.c_str());
+		state_.store(STATE_READY, std::memory_order_release);
+		msg_box_.store(true, std::memory_order_release);
+		
 	}
+
+	inline static std::unordered_map< int64_t, std::function< std::wstring(const std::shared_ptr<calc::Element>&) > > func_umap {
+		{
+			'S',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				auto str_ptr = std::static_pointer_cast<calc::Str>(elem);
+				return L"\"" + str_ptr->get_str() + L"\" ";
+			}
+		},
+		{
+			'Z',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				auto int_ptr = std::static_pointer_cast<calc::Int64>(elem);
+				return int_ptr->get_str() + L" ";
+			}
+		},
+		{
+			'X',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
+				int64_t var_type = var_ptr->get_var_type();
+				if (var_type == 'I') {
+					return L"INDEX ";
+				} else if (var_type == 'N') {
+				 return L"OFNAME ";
+				} else {
+					throw std::runtime_error("Unknown variable type in expression !");
+				}
+			}
+		},
+		{
+			'(',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				return L"( ";
+			}
+		},
+		{
+			')',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				return L") ";
+			}
+		},
+		{
+			'#',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
+				std::wstringstream wss;
+				wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
+				return wss.str();
+			}
+		},
+		{
+			'F',
+			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+				auto fptr = std::static_pointer_cast<calc::Int64_Format>(elem);
+				std::wstringstream wss;
+				wss << L"NUM_FORMAT_" << fptr->get_min_length() << L" ";
+				return wss.str();
+			}
+		},
+	};
 
 public:
 
-	void set_old_dir(const std::wstring& dir) {
+	static void set_old_dir(const std::wstring& dir) {
 		old_dir = MakeLongPath(dir);
 	}
 
+	static std::wstring& get_old_dir() {
+		return old_dir;
+	}
+
 	bool process_lunch() {
-		if (state_.load() == STATE_ONGOING) return false;
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 		if (rename_thread.joinable()) rename_thread.join();
-		
 		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist, this));
 		return true;
 	}
 
 	ProcessThread() {
-		msg_box_.store(false);
-		state_.store(STATE_READY);
+		msg_box_.store(false, std::memory_order_release);
+		state_.store(STATE_READY, std::memory_order_release);
 		// Initialize the expression pointer.
 		input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
 	}
@@ -217,7 +281,11 @@ public:
 	}
 
 	int get_state() {
-		return state_.load();
+		return state_.load(std::memory_order_acquire);
+	}
+
+	int get_and_clear_msg_box() {
+		return msg_box_.exchange(false, std::memory_order_acq_rel);
 	}
 
 	std::wstring get_expression_str() {
@@ -225,67 +293,6 @@ public:
 		if (!input_expr_ptr) {
 			return L"";
 		}
-
-		static std::unordered_map< int64_t, std::function< std::wstring( const std::shared_ptr<calc::Element>& ) > > func_umap {
-			{
-				'S',
-				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					auto str_ptr = std::static_pointer_cast<calc::Str>(elem);
-					return L"\"" + str_ptr->get_str() + L"\" ";
-				}
-			},
-			{
-				'Z',
-				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					auto int_ptr = std::static_pointer_cast<calc::Int64>(elem);
-					return int_ptr->get_str() + L" ";
-				}
-			},
-			{
-				'X',
-				[] (const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
-					int64_t var_type = var_ptr->get_var_type();
-					if (var_type == 'I') {
-						return L"INDEX ";
-					} else if (var_type == 'N') {
-						return L"OFNAME ";
-					} else {
-						throw std::runtime_error("Unknown variable type in expression !");
-					}
-				}
-			},
-			{
-				'(',
-				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					return L"( ";
-				}
-			},
-			{
-				')',
-				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					return L") ";
-				}
-			},
-			{
-				'#',
-				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
-					std::wstringstream wss;
-					wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
-					return wss.str();
-				}
-			},
-			{
-				'F',
-				[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-					auto fptr = std::static_pointer_cast<calc::Int64_Format>(elem);
-					std::wstringstream wss;
-					wss << L"NUM_FORMAT_" << fptr->get_min_length() << L" ";
-					return wss.str();
-				}
-			},
-		};
 
 		std::wstringstream rewss;
 		for (const auto& elem : *input_expr_ptr) {
@@ -300,10 +307,6 @@ public:
 		}
 
 		return rewss.str();
-	}
-
-	void prewarm_expr_table() {
-		(void)get_expression_str();
 	}
 
 	void join() {

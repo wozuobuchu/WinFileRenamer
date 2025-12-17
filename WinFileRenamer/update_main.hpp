@@ -9,7 +9,6 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 	HWND hwnd = rrt.hwnd;
 
 	calc::warmup_operator_tables();
-	ui::pt_.prewarm_expr_table();
 
 	if (!ui::sts_ui_.stop_requested()) {
 
@@ -21,8 +20,8 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 
-			if(ui::pt_.msg_box_.load()) {
-				ui::pt_.msg_box_.store(false);
+			if(ui::pt_.get_and_clear_msg_box()) {
+				SetCurrentDirectoryW(pt::ProcessThread::get_old_dir().c_str());
 				MessageBox(hwnd, ui::pt_.get_res_wstr().c_str(), TEXT("Result"), MB_ICONINFORMATION | MB_OK | MB_TOPMOST);
 			}
 
