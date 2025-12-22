@@ -430,21 +430,20 @@ namespace ui {
 					}
 					UpdateExpressionDisplay();
 					SetWindowTextW(hInputEdit_, L""); // Clear input box
-				}
-				catch (...) {
+				} catch (...) {
 					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 				}
 				break;
 			}
 			case ID_EDIT_PUSH_IDX:
-				if (!pt_.push_expr<calc::Index_Var>();) {
+				if (!pt_.push_expr<calc::Index_Var>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_OFNAME:
-				if (!pt_.push_expr<calc::OriginFileName_Var>();) {
+				if (!pt_.push_expr<calc::OriginFileName_Var>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
