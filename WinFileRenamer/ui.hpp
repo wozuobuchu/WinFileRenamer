@@ -90,6 +90,37 @@ namespace ui {
 		HWND hwnd;
 	};
 
+
+	// Guard helper: when an operation is rejected (usually because the rename thread is running),
+	// caller should NOT update UI state.
+	inline bool GuardUiOp(HWND hwnd, bool ok,
+		const wchar_t* msg = L"Process is ongoing. Please wait for it to finish.") {
+		if (ok) return true;
+		MessageBeep(MB_ICONWARNING);
+		if (hwnd) {
+			MessageBoxW(hwnd, msg, L"Busy", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+		}
+		return false;
+	}
+
+
+	// Disable File/Edit menus while a rename task is running.
+	// This prevents users from triggering actions that ProcessThread would reject anyway.
+	inline void UpdateMenuEnabledState(HWND hwnd) {
+		if (!hwnd) return;
+		HMENU hMenu = GetMenu(hwnd);
+		if (!hMenu) return;
+
+		const bool ongoing = (pt_.get_state() == pt::ProcessThread::STATE_ONGOING);
+		const UINT flags = MF_BYPOSITION | (ongoing ? (MF_GRAYED | MF_DISABLED) : MF_ENABLED);
+
+		// Menu bar order is: Option (0), File (1), Edit (2)
+		EnableMenuItem(hMenu, 1, flags);
+		EnableMenuItem(hMenu, 2, flags);
+		DrawMenuBar(hwnd);
+	}
+
+
 	// Helper function to update the expression display
 	inline void UpdateExpressionDisplay() {
 		try {
@@ -102,9 +133,10 @@ namespace ui {
 		}
 	}
 
-	// Helper function to add a file path to the list view
-	inline void AddFileToList(const std::wstring& filePath) {
-		if (!hListView_) return;
+	// Helper function to add a file path to the list view.
+	// Returns true on success. If returns false, UI should not change.
+	inline bool AddFileToList(HWND hwnd, const std::wstring& filePath) {
+		if (!hListView_) return false;
 
 		LVITEMW lvi = { 0 };
 		lvi.mask = LVIF_TEXT;
@@ -112,13 +144,31 @@ namespace ui {
 		lvi.iItem = ListView_GetItemCount(hListView_); // Insert at the end
 		lvi.iSubItem = 0;
 
-		ListView_InsertItem(hListView_, &lvi);
+		int inserted = ListView_InsertItem(hListView_, &lvi);
+		if (inserted < 0) {
+			MessageBeep(MB_ICONWARNING);
+			if (hwnd) MessageBoxW(hwnd, L"Failed to insert item into list view.", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+			return false;
+		}
 
-		pt_.push_filepath(filePath);
+		// Keep UI/backend consistent: if backend rejects, rollback the UI insertion.
+		if (!pt_.push_filepath(filePath)) {
+			ListView_DeleteItem(hListView_, inserted);
+			return GuardUiOp(hwnd, false);
+		}
+
+		return true;
 	}
+
 
 	// Helper function to handle the "Open File" dialog logic
 	inline void HandleFileOpen(HWND hwnd) {
+		// Reject file selection while background rename is running.
+		if (pt_.get_state() == pt::ProcessThread::STATE_ONGOING) {
+			GuardUiOp(hwnd, false);
+			return;
+		}
+
 		// Heap memory
 		constexpr DWORD OPENFILENAME_BUFFER = 32767;
 		std::unique_ptr<wchar_t[]> szFile = std::make_unique<wchar_t[]>(OPENFILENAME_BUFFER);
@@ -146,14 +196,14 @@ namespace ui {
 
 			if (*p == 0) {
 				// Only one file was selected. 'dir' holds the full path.
-				AddFileToList(dir);
+				AddFileToList(hwnd, dir);
 			} else {
 				// Multiple files were selected.
 				// Loop through the subsequent null-terminated file names.
 				while (*p) {
 					std::wstring file = p;
 					std::wstring fullPath = dir + L"\\" + file;
-					AddFileToList(fullPath);
+					AddFileToList(hwnd, fullPath);
 
 					// Move to the next file name
 					p += file.length() + 1;
@@ -317,6 +367,9 @@ namespace ui {
 				SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
 			}
 
+
+			UpdateMenuEnabledState(hwnd);
+
 			return 0;
 		}
 
@@ -329,14 +382,20 @@ namespace ui {
 				HandleFileOpen(hwnd);
 				break;
 			case ID_FILE_CLEAR:
-				// Clear all items from the list view
+				// Clear all items from the list view (only if backend accepts it)
+				if (!pt_.reset_selected_file()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				ListView_DeleteAllItems(hListView_);
-				pt_.reset_selected_file();
 				break;
 			case ID_OPTIONS_SUBMIT:
 				// Call the process_lunch function
 				if (!pt_.process_lunch()) {
 					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+				}
+				else {
+					UpdateMenuEnabledState(hwnd);
 				}
 				break;
 			case ID_OPTIONS_EXIT:
@@ -345,44 +404,63 @@ namespace ui {
 				break;
 
 				// Handlers for Edit Menu
+
 			case ID_EDIT_PUSH_STR:
 			{
 				wchar_t buffer[256] = { 0 };
 				GetWindowTextW(hInputEdit_, buffer, 256);
-				pt_.push_expr<calc::Str>(std::wstring(buffer));
+				if (!pt_.push_expr<calc::Str>(std::wstring(buffer))) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				SetWindowTextW(hInputEdit_, L""); // Clear input box
 				break;
 			}
+
 			case ID_EDIT_PUSH_NUM:
 			{
 				wchar_t buffer[256] = { 0 };
 				GetWindowTextW(hInputEdit_, buffer, 256);
 				try {
 					int64_t val = std::stoll(std::wstring(buffer));
-					pt_.push_expr<calc::Int64>(val);
+					if (!pt_.push_expr<calc::Int64>(val)) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
 					UpdateExpressionDisplay();
 					SetWindowTextW(hInputEdit_, L""); // Clear input box
-				} catch (...) {
+				}
+				catch (...) {
 					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 				}
 				break;
 			}
 			case ID_EDIT_PUSH_IDX:
-				pt_.push_expr<calc::Index_Var>();
+				if (!pt_.push_expr<calc::Index_Var>();) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_OFNAME:
-				pt_.push_expr<calc::OriginFileName_Var>();
+				if (!pt_.push_expr<calc::OriginFileName_Var>();) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
+
 			case ID_EDIT_PUSH_NUM_FORMAT:
 			{
 				wchar_t buffer[256] = { 0 };
 				GetWindowTextW(hInputEdit_, buffer, 256);
 				try {
 					int64_t val = std::stoll(std::wstring(buffer));
-					pt_.push_expr<calc::Int64_Format>(val);
+					if (!pt_.push_expr<calc::Int64_Format>(val)) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
 					UpdateExpressionDisplay();
 					SetWindowTextW(hInputEdit_, L""); // Clear input box
 				}
@@ -392,42 +470,66 @@ namespace ui {
 				break;
 			}
 			case ID_EDIT_PUSH_LB:
-				pt_.push_expr<calc::Lbracket>();
+				if (!pt_.push_expr<calc::Lbracket>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_RB:
-				pt_.push_expr<calc::Rbracket>();
+				if (!pt_.push_expr<calc::Rbracket>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_ADD:
-				pt_.push_expr<calc::Add_Int64Opt>();
+				if (!pt_.push_expr<calc::Add_Int64Opt>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_SUB:
-				pt_.push_expr<calc::Sub_Int64Opt>();
+				if (!pt_.push_expr<calc::Sub_Int64Opt>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_MUL:
-				pt_.push_expr<calc::Mul_Int64Opt>();
+				if (!pt_.push_expr<calc::Mul_Int64Opt>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_DIV:
-				pt_.push_expr<calc::Div_Int64Opt>();
+				if (!pt_.push_expr<calc::Div_Int64Opt>()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_DEL:
-				pt_.pop_expr_ptr();
+				if (!pt_.pop_expr_ptr()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_CLEAR:
-				pt_.reset_input_expr_ptr();
+				if (!pt_.reset_input_expr_ptr()) {
+					GuardUiOp(hwnd, false);
+					break;
+				}
 				UpdateExpressionDisplay();
 				break;
 			}
 			return 0;
 		}
 
-        case WM_SIZE:
+		case WM_SIZE:
 		{
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
@@ -548,6 +650,14 @@ namespace ui {
 
 			return 0;
 		}
+
+		case WM_INITMENU:
+		case WM_INITMENUPOPUP:
+		{
+			UpdateMenuEnabledState(hwnd);
+			break;
+		}
+
 
 		case WM_CTLCOLORSTATIC:
 		{
