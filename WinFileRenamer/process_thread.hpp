@@ -1,4 +1,4 @@
-#ifndef _PROCESS_THREAD_HPP
+﻿#ifndef _PROCESS_THREAD_HPP
 #define _PROCESS_THREAD_HPP
 
 #include "calc.hpp"

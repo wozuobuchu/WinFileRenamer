@@ -1,4 +1,4 @@
-#ifndef _CALC_HPP
+﻿#ifndef _CALC_HPP
 #define _CALC_HPP
 
 #include <algorithm>

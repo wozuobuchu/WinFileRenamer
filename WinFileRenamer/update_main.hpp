@@ -1,4 +1,4 @@
-#ifndef _UPDATE_MAIN_HPP_
+﻿#ifndef _UPDATE_MAIN_HPP_
 #define _UPDATE_MAIN_HPP_
 
 #include "ui.hpp"

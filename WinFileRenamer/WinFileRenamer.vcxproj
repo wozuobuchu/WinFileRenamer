@@ -132,7 +132,9 @@
     <ClCompile Include="WinFileRenamer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="aop.hpp" />
     <ClInclude Include="calc.hpp" />
+    <ClInclude Include="head.hpp" />
     <ClInclude Include="process_thread.hpp" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="ui.hpp" />

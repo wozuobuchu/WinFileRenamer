@@ -13,6 +13,18 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="头文件\UI">
+      <UniqueIdentifier>{cf381863-c02a-4c55-aa1a-bc48747684a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\CALC">
+      <UniqueIdentifier>{1cb49d5e-7c1f-444d-a86f-45573ff7c92d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\SYS">
+      <UniqueIdentifier>{2b6fbb8b-15b2-4505-b986-6c141c638316}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\AOP">
+      <UniqueIdentifier>{5fa74a63-24ee-4220-b218-417549a4630a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WinFileRenamer.cpp">
@@ -21,18 +33,24 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ui.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="update_main.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="calc.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="process_thread.hpp">
-      <Filter>头文件</Filter>
+      <Filter>头文件\UI</Filter>
     </ClInclude>
     <ClInclude Include="resource1.h">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="calc.hpp">
+      <Filter>头文件\CALC</Filter>
+    </ClInclude>
+    <ClInclude Include="process_thread.hpp">
+      <Filter>头文件\SYS</Filter>
+    </ClInclude>
+    <ClInclude Include="update_main.hpp">
+      <Filter>头文件\SYS</Filter>
+    </ClInclude>
+    <ClInclude Include="aop.hpp">
+      <Filter>头文件\AOP</Filter>
+    </ClInclude>
+    <ClInclude Include="head.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

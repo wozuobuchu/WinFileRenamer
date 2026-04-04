@@ -1,4 +1,4 @@
-#ifndef _UI_HPP_
+﻿#ifndef _UI_HPP_
 #define _UI_HPP_
 
 #include "resource1.h"
