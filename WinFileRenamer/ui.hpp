@@ -734,60 +734,76 @@ namespace ui {
 
 			case WM_SIZE:
 			{
-				int width = LOWORD(lParam);
-				int height = HIWORD(lParam);
+				if (wParam == SIZE_MINIMIZED) return 0;
+				// Debounce window resize (lazy evaluation) to prevent UI freezing with large lists
+				KillTimer(hwnd, 9999);
+				SetTimer(hwnd, 9999, 30, NULL);
+				return 0;
+			}
 
-				int marginX = 20;
-				int marginY = 10;
-				int spacingY = 10;
+			case WM_TIMER:
+			{
+				if (wParam == 9999) {
+					KillTimer(hwnd, 9999);
 
-				int contentX = marginX;
-				int contentWidth = width - 2 * marginX;
-				if (contentWidth < 100) contentWidth = 100;
+					RECT rc;
+					GetClientRect(hwnd, &rc);
 
-				// Top section: List View (takes about 50%)
-				int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
-				if (listHeight < 100) listHeight = 100;
+					int width = rc.right - rc.left;
+					int height = rc.bottom - rc.top;
 
-				int currentY = marginY;
+					int marginX = 20;
+					int marginY = 10;
+					int spacingY = 10;
 
-				if (hLabelFileList_) {
-					MoveWindow(hLabelFileList_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+					int contentX = marginX;
+					int contentWidth = width - 2 * marginX;
+					if (contentWidth < 100) contentWidth = 100;
+
+					// Top section: List View (takes about 50%)
+					int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
+					if (listHeight < 100) listHeight = 100;
+
+					int currentY = marginY;
+
+					// BeginDeferWindowPos could also be used here, but simple move is fine
+					if (hLabelFileList_) {
+						MoveWindow(hLabelFileList_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+					}
+					currentY += LABEL_HEIGHT;
+
+					if (hListView_) {
+						MoveWindow(hListView_, contentX, currentY, contentWidth, listHeight, TRUE);
+						ListView_SetColumnWidth(hListView_, 0, contentWidth - 25); // Account for scrollbar
+					}
+					currentY += listHeight + spacingY;
+
+					if (hLabelExpr_) {
+						MoveWindow(hLabelExpr_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+					}
+					currentY += LABEL_HEIGHT;
+
+					// Middle section: Expression Display
+					int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
+					// Guarantee some height
+					if (exprHeight < 60) {
+						exprHeight = 60;
+					}
+
+					if (hExprDisplay_) {
+						MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
+					}
+					currentY += exprHeight + spacingY;
+
+					if (hLabelInput_) {
+						MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+					}
+					currentY += LABEL_HEIGHT;
+
+					if (hInputEdit_) {
+						MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
+					}
 				}
-				currentY += LABEL_HEIGHT;
-
-				if (hListView_) {
-					MoveWindow(hListView_, contentX, currentY, contentWidth, listHeight, TRUE);
-					ListView_SetColumnWidth(hListView_, 0, contentWidth - 25); // Account for scrollbar
-				}
-				currentY += listHeight + spacingY;
-
-				if (hLabelExpr_) {
-					MoveWindow(hLabelExpr_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-				}
-				currentY += LABEL_HEIGHT;
-
-				// Middle section: Expression Display
-				int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
-				// Guarantee some height
-				if (exprHeight < 60) {
-					exprHeight = 60;
-				}
-
-				if (hExprDisplay_) {
-					MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
-				}
-				currentY += exprHeight + spacingY;
-
-				if (hLabelInput_) {
-					MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-				}
-				currentY += LABEL_HEIGHT;
-
-				if (hInputEdit_) {
-					MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
-				}
-
 				return 0;
 			}
 
