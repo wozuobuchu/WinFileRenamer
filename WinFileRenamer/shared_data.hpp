@@ -18,7 +18,7 @@
 
 namespace shared_data {
 
-std::stop_source sts_ui_;
+std::stop_source sts_;
 
 pt::ProcessThread pt_;
 

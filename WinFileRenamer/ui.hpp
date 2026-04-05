@@ -215,7 +215,7 @@ namespace ui {
 			if (wParam == SC_CLOSE) {
 				shared_data::pt_.join();
 				PostQuitMessage(0);
-				shared_data::sts_ui_.request_stop();
+				shared_data::sts_.request_stop();
 				return 0;
 			}
 			break;
@@ -374,151 +374,185 @@ namespace ui {
 		{
 			// Handle menu commands
 			switch (LOWORD(wParam)) {
-			case ID_FILE_OPEN:
-				HandleFileOpen(hwnd);
-				break;
-			case ID_FILE_CLEAR:
-				// Clear all items from the list view (only if backend accepts it)
-				if (!shared_data::pt_.reset_selected_file()) {
-					GuardUiOp(hwnd, false);
+
+				case ID_FILE_OPEN:
+				{
+					HandleFileOpen(hwnd);
 					break;
 				}
-				ListView_DeleteAllItems(hListView_);
-				break;
-			case ID_OPTIONS_SUBMIT:
-				// Call the process_lunch function
-				if (!shared_data::pt_.process_lunch()) {
-					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
-				} else {
-					UpdateMenuEnabledState(hwnd);
+
+				case ID_FILE_CLEAR:
+				{
+					if (!shared_data::pt_.reset_selected_file()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					ListView_DeleteAllItems(hListView_);
+					break;
 				}
-				break;
-			case ID_OPTIONS_EXIT:
-				PostQuitMessage(0);
-				shared_data::sts_ui_.request_stop();
-				break;
+
+				case ID_OPTIONS_SUBMIT:
+				{
+					// Call the process_lunch function
+					if (!shared_data::pt_.process_lunch()) {
+						MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+					} else {
+						UpdateMenuEnabledState(hwnd);
+					}
+					break;
+				}
+
+				case ID_OPTIONS_EXIT:
+				{
+					PostQuitMessage(0);
+					shared_data::sts_.request_stop();
+					break;
+				}
+
 
 				// Handlers for Edit Menu
-
-			case ID_EDIT_PUSH_STR:
-			{
-				wchar_t buffer[256] = { 0 };
-				GetWindowTextW(hInputEdit_, buffer, 256);
-				if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
-					GuardUiOp(hwnd, false);
-					break;
-				}
-				UpdateExpressionDisplay();
-				SetWindowTextW(hInputEdit_, L""); // Clear input box
-				break;
-			}
-
-			case ID_EDIT_PUSH_NUM:
-			{
-				wchar_t buffer[256] = { 0 };
-				GetWindowTextW(hInputEdit_, buffer, 256);
-				try {
-					int64_t val = std::stoll(std::wstring(buffer));
-					if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
+				case ID_EDIT_PUSH_STR:
+				{
+					wchar_t buffer[256] = { 0 };
+					GetWindowTextW(hInputEdit_, buffer, 256);
+					if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
 						GuardUiOp(hwnd, false);
 						break;
 					}
 					UpdateExpressionDisplay();
 					SetWindowTextW(hInputEdit_, L""); // Clear input box
-				} catch (...) {
-					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-				}
-				break;
-			}
-			case ID_EDIT_PUSH_IDX:
-				if (!shared_data::pt_.push_expr<calc::Index_Var>()) {
-					GuardUiOp(hwnd, false);
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_OFNAME:
-				if (!shared_data::pt_.push_expr<calc::OriginFileName_Var>()) {
-					GuardUiOp(hwnd, false);
-					break;
-				}
-				UpdateExpressionDisplay();
-				break;
 
-			case ID_EDIT_PUSH_NUM_FORMAT:
-			{
-				wchar_t buffer[256] = { 0 };
-				GetWindowTextW(hInputEdit_, buffer, 256);
-				try {
-					int64_t val = std::stoll(std::wstring(buffer));
-					if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
+				case ID_EDIT_PUSH_NUM:
+				{
+					wchar_t buffer[256] = { 0 };
+					GetWindowTextW(hInputEdit_, buffer, 256);
+					try {
+						int64_t val = std::stoll(std::wstring(buffer));
+						if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						SetWindowTextW(hInputEdit_, L""); // Clear input box
+					} catch (...) {
+						MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+					}
+					break;
+				}
+				case ID_EDIT_PUSH_IDX:
+				{
+					if (!shared_data::pt_.push_expr<calc::Index_Var>()) {
 						GuardUiOp(hwnd, false);
 						break;
 					}
 					UpdateExpressionDisplay();
-					SetWindowTextW(hInputEdit_, L""); // Clear input box
-				}
-				catch (...) {
-					MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-				}
-				break;
-			}
-			case ID_EDIT_PUSH_LB:
-				if (!shared_data::pt_.push_expr<calc::Lbracket>()) {
-					GuardUiOp(hwnd, false);
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_RB:
-				if (!shared_data::pt_.push_expr<calc::Rbracket>()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_OFNAME:
+				{
+					if (!shared_data::pt_.push_expr<calc::OriginFileName_Var>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_ADD:
-				if (!shared_data::pt_.push_expr<calc::Add_Int64Opt>()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_NUM_FORMAT:
+				{
+					wchar_t buffer[256] = { 0 };
+					GetWindowTextW(hInputEdit_, buffer, 256);
+					try {
+						int64_t val = std::stoll(std::wstring(buffer));
+						if ((val < 0) || (val > 100)) {
+							MessageBoxW(hwnd, L"Number format out of range.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+							break;
+						}
+						if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						SetWindowTextW(hInputEdit_, L""); // Clear input box
+					} catch (...) {
+						MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+					}
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_SUB:
-				if (!shared_data::pt_.push_expr<calc::Sub_Int64Opt>()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_LB:
+				{
+					if (!shared_data::pt_.push_expr<calc::Lbracket>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_MUL:
-				if (!shared_data::pt_.push_expr<calc::Mul_Int64Opt>()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_RB:
+				{
+					if (!shared_data::pt_.push_expr<calc::Rbracket>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_DIV:
-				if (!shared_data::pt_.push_expr<calc::Div_Int64Opt>()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_ADD:
+				{
+					if (!shared_data::pt_.push_expr<calc::Add_Int64Opt>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_PUSH_DEL:
-				if (!shared_data::pt_.pop_expr_ptr()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_SUB:
+				{
+					if (!shared_data::pt_.push_expr<calc::Sub_Int64Opt>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
-			case ID_EDIT_CLEAR:
-				if (!shared_data::pt_.reset_input_expr_ptr()) {
-					GuardUiOp(hwnd, false);
+				case ID_EDIT_PUSH_MUL:
+				{
+					if (!shared_data::pt_.push_expr<calc::Mul_Int64Opt>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
 					break;
 				}
-				UpdateExpressionDisplay();
-				break;
+				case ID_EDIT_PUSH_DIV:
+				{
+					if (!shared_data::pt_.push_expr<calc::Div_Int64Opt>()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
+					break;
+				}
+				case ID_EDIT_PUSH_DEL:
+				{
+					if (!shared_data::pt_.pop_expr_ptr()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
+					break;
+				}
+				case ID_EDIT_CLEAR:
+				{
+					if (!shared_data::pt_.reset_input_expr_ptr()) {
+						GuardUiOp(hwnd, false);
+						break;
+					}
+					UpdateExpressionDisplay();
+					break;
+				}
+
 			}
 			return 0;
 		}
@@ -602,7 +636,7 @@ namespace ui {
 		{
 			shared_data::pt_.join();
 			PostQuitMessage(0);
-			shared_data::sts_ui_.request_stop();
+			shared_data::sts_.request_stop();
 			return 0;
 		}
 
@@ -658,7 +692,7 @@ namespace ui {
 
 		if (!RegisterClassEx(wndclass)) {
 			MessageBox(NULL, TEXT("Failed to register window."), TEXT("Error"), MB_ICONWARNING | MB_OK);
-			shared_data::sts_ui_.request_stop();
+			shared_data::sts_.request_stop();
 			return ret;
 		}
 
@@ -724,7 +758,7 @@ namespace ui {
 
 		if (hwnd == NULL) {
 			MessageBox(NULL, TEXT("Failed to create window."), TEXT("Error"), MB_ICONWARNING | MB_OK);
-			shared_data::sts_ui_.request_stop();
+			shared_data::sts_.request_stop();
 			return ret;
 		}
 

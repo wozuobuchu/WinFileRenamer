@@ -10,13 +10,13 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 
 	calc::warmup_operator_tables();
 
-	if (!shared_data::sts_ui_.stop_requested()) {
+	if (!shared_data::sts_.stop_requested()) {
 
 		ShowWindow(hwnd, SW_SHOWDEFAULT);
 		UpdateWindow(hwnd);
 
 		MSG msg{ 0 };
-		while (GetMessage(&msg, NULL, 0, 0) && (!shared_data::sts_ui_.stop_requested())) {
+		while (GetMessage(&msg, NULL, 0, 0) && (!shared_data::sts_.stop_requested())) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 
@@ -29,7 +29,7 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 
 	}
 
-	shared_data::sts_ui_.request_stop();
+	shared_data::sts_.request_stop();
 }
 
 #endif // !_UPDATE_MAIN_HPP_
