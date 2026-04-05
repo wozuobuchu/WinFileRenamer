@@ -61,6 +61,9 @@ namespace ui {
 
 	constexpr int ID_LANG_EN = 9003;
 	constexpr int ID_LANG_ZH = 9004;
+	constexpr int ID_LANG_ZH_TW = 9005;
+	constexpr int ID_LANG_JA = 9006;
+	constexpr int ID_LANG_RU = 9007;
 
 	constexpr int ID_EXPR_DISPLAY = 8001;
 	constexpr int ID_INPUT_EDIT = 8002;
@@ -84,7 +87,7 @@ namespace ui {
 
 	inline std::wstring oldDir;
 
-	enum class Lang { EN, ZH };
+	enum class Lang { EN, ZH, ZH_TW, JA, RU };
 	inline Lang default_lang = Lang::EN;
 
 	struct UIStrings {
@@ -122,6 +125,9 @@ namespace ui {
 		const wchar_t* optLang;
 		const wchar_t* optLangEn;
 		const wchar_t* optLangZh;
+		const wchar_t* optLangZhTw;
+		const wchar_t* optLangJa;
+		const wchar_t* optLangRu;
 		const wchar_t* optExit;
 
 		const wchar_t* labelFileList;
@@ -138,7 +144,7 @@ namespace ui {
 		L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
 		L"Brackets", L"Left Bracket (", L"Right Bracket )",
 		L"Delete Last", L"Clear Expression",
-		L"Language", L"English", L"Chinese", L"Exit",
+		L"Language", L"English", L"Chinese (Simplified)", L"Chinese (Traditional)", L"Japanese", L"Russian", L"Exit",
 		L"Selected Files", L"Expression Preview", L"Input", L"File Path"
 	};
 
@@ -150,12 +156,55 @@ namespace ui {
 		L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
 		L"括号", L"左括号 (", L"右括号 )",
 		L"删除上一个", L"清空表达式",
-		L"语言", L"English", L"中文", L"退出",
+		L"语言", L"English", L"中文(简体)", L"中文(繁体)", L"日本語", L"Русский", L"退出",
 		L"已选文件", L"表达式预览", L"输入框", L"文件路径"
 	};
 
+	inline UIStrings strings_zh_tw = {
+		L"檔案", L"運算式", L"選項",
+		L"開啟", L"清空", L"套用重新命名", L"自動配對字幕名",
+		L"常數", L"加入字串 [輸入框]", L"加入數字 [輸入框]", L"加入最小數字格式 [輸入框]",
+		L"變數", L"加入序號", L"加入原始檔名",
+		L"運算子", L"加 (+)", L"減 (-)", L"乘 (*)", L"除 (/)",
+		L"括號", L"左括號 (", L"右括號 )",
+		L"刪除上一個", L"清空運算式",
+		L"語言", L"English", L"中文(簡體)", L"中文(繁體)", L"日本語", L"Русский", L"退出",
+		L"已選檔案", L"運算式預覽", L"輸入框", L"檔案路徑"
+	};
+
+	inline UIStrings strings_ja = {
+		L"ファイル", L"式", L"オプション",
+		L"開く", L"クリア", L"名前変更を適用", L"字幕を自動マッチ",
+		L"定数", L"文字列を追加 [入力]", L"数値を追加 [入力]", L"最小数値形式を追加 [入力]",
+		L"変数", L"連番を追加", L"元のファイル名を追加",
+		L"演算子", L"加算 (+)", L"減算 (-)", L"乗算 (*)", L"除算 (/)",
+		L"括弧", L"左括弧 (", L"右括弧 )",
+		L"最後を削除", L"式をクリア",
+		L"言語", L"English", L"中文(簡体)", L"中文(繁体)", L"日本語", L"Русский", L"終了",
+		L"選択されたファイル", L"式のプレビュー", L"入力", L"ファイルパス"
+	};
+
+	inline UIStrings strings_ru = {
+		L"Файл", L"Выражение", L"Настройки",
+		L"Открыть", L"Очистить", L"Применить", L"Авто-подбор субтитров",
+		L"Константы", L"Добавить строку [ВВОД]", L"Добавить число [ВВОД]", L"Добавить мин. длину числа [ВВОД]",
+		L"Переменные", L"Добавить индекс", L"Добавить исх. имя файла",
+		L"Операторы", L"Сложение (+)", L"Вычитание (-)", L"Умножение (*)", L"Деление (/)",
+		L"Скобки", L"Левая скобка (", L"Правая скобка )",
+		L"Удалить последнее", L"Очистить выражение",
+		L"Язык", L"English", L"Chinese (Simplified)", L"Chinese (Traditional)", L"Japanese", L"Русский", L"Выход",
+		L"Выбранные файлы", L"Предпросмотр выражения", L"Ввод", L"Путь к файлу"
+	};
+
 	inline const UIStrings& GetStrings() {
-		return default_lang == Lang::ZH ? strings_zh : strings_en;
+		switch (default_lang) {
+			case Lang::ZH: return strings_zh;
+			case Lang::ZH_TW: return strings_zh_tw;
+			case Lang::JA: return strings_ja;
+			case Lang::RU: return strings_ru;
+			case Lang::EN:
+			default: return strings_en;
+		}
 	}
 
 	struct RegisterReturn {
@@ -236,6 +285,9 @@ namespace ui {
 		HMENU hLangMenu = CreatePopupMenu();
 		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::EN ? MF_CHECKED : MF_UNCHECKED), ID_LANG_EN, s.optLangEn);
 		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::ZH ? MF_CHECKED : MF_UNCHECKED), ID_LANG_ZH, s.optLangZh);
+		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::ZH_TW ? MF_CHECKED : MF_UNCHECKED), ID_LANG_ZH_TW, s.optLangZhTw);
+		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::JA ? MF_CHECKED : MF_UNCHECKED), ID_LANG_JA, s.optLangJa);
+		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::RU ? MF_CHECKED : MF_UNCHECKED), ID_LANG_RU, s.optLangRu);
 
 		HMENU hOptionMenu = CreatePopupMenu();
 		AppendMenu(hOptionMenu, MF_POPUP, (UINT_PTR)hLangMenu, s.optLang);
@@ -580,6 +632,27 @@ namespace ui {
 					case ID_LANG_ZH:
 					{
 						default_lang = Lang::ZH;
+						UpdateLanguageUI(hwnd);
+						break;
+					}
+
+					case ID_LANG_ZH_TW:
+					{
+						default_lang = Lang::ZH_TW;
+						UpdateLanguageUI(hwnd);
+						break;
+					}
+
+					case ID_LANG_JA:
+					{
+						default_lang = Lang::JA;
+						UpdateLanguageUI(hwnd);
+						break;
+					}
+
+					case ID_LANG_RU:
+					{
+						default_lang = Lang::RU;
 						UpdateLanguageUI(hwnd);
 						break;
 					}
