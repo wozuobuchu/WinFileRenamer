@@ -75,7 +75,10 @@ private:
 
 			for (size_t var_idex = 0; var_idex < vec_filepath.size(); ++var_idex) {
 				const std::wstring& ofname = vec_filepath[var_idex];
-				vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn, var_idex, ofname)));
+				std::wstring new_filename = calc::calculate_rpn(calc::preprocess_rpn(rpn, var_idex, ofname));
+				std::filesystem::path src_path(ofname);
+				std::filesystem::path dst_path = src_path.parent_path() / new_filename;
+				vec_newname.emplace_back(dst_path.wstring());
 			}
 
 			calc_flag = true;
