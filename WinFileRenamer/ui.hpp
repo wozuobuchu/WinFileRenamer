@@ -235,7 +235,9 @@ namespace ui {
 
 		case WM_CREATE:
 		{
-			HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+			HDC hdc = GetDC(hwnd);
+			HFONT hFont = CreateFontW(-MulDiv(11, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+			ReleaseDC(hwnd, hdc);
 
 			hLabelFileList_ = CreateWindowEx(
 				0,
@@ -313,9 +315,9 @@ namespace ui {
 
 			hExprDisplay_ = CreateWindowEx(
 				WS_EX_CLIENTEDGE,
-				L"STATIC", // Static text control
+				L"EDIT", // EDIT control for better scrolling and word wrapping
 				L"",       // Initial text
-				WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX | WS_VSCROLL,
+				WS_CHILD | WS_VISIBLE | ES_LEFT | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL,
 				0, exprDisplayY, UI_WIDTH, exprDisplayHeight,
 				hwnd,
 				(HMENU)(UINT_PTR)ID_EXPR_DISPLAY,
@@ -526,118 +528,55 @@ namespace ui {
 			int width = LOWORD(lParam);
 			int height = HIWORD(lParam);
 
-			int topHeight = (height * 3) / 5;
-			int bottomHeight = height - topHeight;
+			int marginX = 20;
+			int marginY = 10;
+			int spacingY = 10;
 
-			if (topHeight < LABEL_HEIGHT + 8) topHeight = LABEL_HEIGHT + 8;
-			if (bottomHeight < LABEL_HEIGHT + INPUT_HEIGHT + 8)
-				bottomHeight = LABEL_HEIGHT + INPUT_HEIGHT + 8;
+			int contentX = marginX;
+			int contentWidth = width - 2 * marginX;
+			if (contentWidth < 100) contentWidth = 100;
 
-			int bottomY = topHeight;
+			// Top section: List View (takes about 50%)
+			int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
+			if (listHeight < 100) listHeight = 100;
 
-			int contentWidth = width - 2 * CONTENT_MARGIN_H;
-			if (contentWidth > CONTENT_MAX_WIDTH)
-				contentWidth = CONTENT_MAX_WIDTH;
-			if (contentWidth < width / 2) contentWidth = width - 2 * 8;
-
-			int contentX = (width - contentWidth) / 2;
+			int currentY = marginY;
 
 			if (hLabelFileList_) {
-				MoveWindow(
-					hLabelFileList_,
-					contentX,
-					4,
-					contentWidth,
-					LABEL_HEIGHT,
-					TRUE
-				);
+				MoveWindow(hLabelFileList_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
 			}
+			currentY += LABEL_HEIGHT;
 
 			if (hListView_) {
-				int listY = LABEL_HEIGHT + 4;
-				int listHeight = topHeight - (LABEL_HEIGHT + 4);
-				if (listHeight < 0) listHeight = 0;
-
-				MoveWindow(
-					hListView_,
-					contentX,
-					listY,
-					contentWidth,
-					listHeight,
-					TRUE
-				);
-
-				ListView_SetColumnWidth(hListView_, 0, contentWidth - 4);
+				MoveWindow(hListView_, contentX, currentY, contentWidth, listHeight, TRUE);
+				ListView_SetColumnWidth(hListView_, 0, contentWidth - 25); // Account for scrollbar
 			}
+			currentY += listHeight + spacingY;
 
 			if (hLabelExpr_) {
-				MoveWindow(
-					hLabelExpr_,
-					contentX,
-					bottomY + 4,
-					contentWidth,
-					LABEL_HEIGHT,
-					TRUE
-				);
+				MoveWindow(hLabelExpr_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
 			}
+			currentY += LABEL_HEIGHT;
 
-			int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
-
-			int bottomClientBottom = height;
-			int availableBottom = bottomClientBottom - exprDisplayY - 4;
-			if (availableBottom < LABEL_HEIGHT + 24) availableBottom = LABEL_HEIGHT + 24;
-
-			int exprDisplayHeight = availableBottom / 3;
-			const int MIN_EXPR_HEIGHT = 40;
-			const int MIN_INPUT_HEIGHT = 40;
-
-			if (exprDisplayHeight < MIN_EXPR_HEIGHT)
-				exprDisplayHeight = MIN_EXPR_HEIGHT;
-			if (exprDisplayHeight > availableBottom - (LABEL_HEIGHT + MIN_INPUT_HEIGHT))
-				exprDisplayHeight = availableBottom - (LABEL_HEIGHT + MIN_INPUT_HEIGHT);
-
-			if (exprDisplayHeight < 0) exprDisplayHeight = 0;
+			// Middle section: Expression Display
+			int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
+			// Guarantee some height
+			if (exprHeight < 60) {
+				exprHeight = 60;
+			}
 
 			if (hExprDisplay_) {
-				MoveWindow(
-					hExprDisplay_,
-					contentX,
-					exprDisplayY,
-					contentWidth,
-					exprDisplayHeight,
-					TRUE
-				);
+				MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
 			}
-
-			int inputLabelY = exprDisplayY + exprDisplayHeight + 4;
+			currentY += exprHeight + spacingY;
 
 			if (hLabelInput_) {
-				MoveWindow(
-					hLabelInput_,
-					contentX,
-					inputLabelY,
-					contentWidth,
-					LABEL_HEIGHT,
-					TRUE
-				);
+				MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
 			}
-
-			int inputEditY = inputLabelY + LABEL_HEIGHT;
-			int inputHeight = bottomClientBottom - inputEditY - 4;
-			if (inputHeight < MIN_INPUT_HEIGHT)
-				inputHeight = MIN_INPUT_HEIGHT;
-			if (inputEditY + inputHeight > height)
-				inputEditY = height - inputHeight;
+			currentY += LABEL_HEIGHT;
 
 			if (hInputEdit_) {
-				MoveWindow(
-					hInputEdit_,
-					contentX,
-					inputEditY,
-					contentWidth,
-					inputHeight,
-					TRUE
-				);
+				MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
 			}
 
 			return 0;
