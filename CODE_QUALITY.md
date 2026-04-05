@@ -100,7 +100,7 @@ return (other.data == 0) ? Int64(0x7fffffffffffffff) : Int64(data / other.data);
 ### 5. 文档与命名风格还有提升空间
 
 项目 README 已经对功能做了较好的介绍，但源码内部文档偏少，尤其是计算表达式相关逻辑。  
-另外，像 `var_idex`、`ofname` 这类命名在 `/home/runner/work/WinFileRenamer/WinFileRenamer/WinFileRenamer/process_thread.hpp` 中会降低一些可读性。
+另外，像 `var_idex`（建议改为 `var_index`）、`ofname` 这类命名在 `/home/runner/work/WinFileRenamer/WinFileRenamer/WinFileRenamer/process_thread.hpp` 中会降低一些可读性。
 
 这不会立即造成 bug，但会增加后来者理解代码的成本。
 
