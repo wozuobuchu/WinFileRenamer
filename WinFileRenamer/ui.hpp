@@ -210,438 +210,440 @@ namespace ui {
 	LRESULT CALLBACK windowproc_main(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		switch (uMsg) {
 
-		case WM_SYSCOMMAND:
-		{
-			if (wParam == SC_CLOSE) {
+			case WM_SYSCOMMAND:
+			{
+				if (wParam == SC_CLOSE) {
+					shared_data::pt_.join();
+					PostQuitMessage(0);
+					shared_data::sts_.request_stop();
+					return 0;
+				}
+				break;
+			}
+
+			case WM_GETMINMAXINFO:
+			{
+				LPMINMAXINFO lpMinMaxInfo = (LPMINMAXINFO)lParam;
+				// Set a reasonable minimum tracking size
+
+				lpMinMaxInfo->ptMinTrackSize.x = 600;
+
+				lpMinMaxInfo->ptMinTrackSize.y = 400;
+				// We don't set ptMaxTrackSize, so the default (full screen) is the max.
+				return 0;
+			}
+
+			case WM_CREATE:
+			{
+				HDC hdc = GetDC(hwnd);
+				HFONT hFont = CreateFontW(-MulDiv(11, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+				ReleaseDC(hwnd, hdc);
+
+				hLabelFileList_ = CreateWindowEx(
+					0,
+					L"STATIC",
+					L"Selected Files",
+					WS_CHILD | WS_VISIBLE | SS_LEFT,
+					8, 4, UI_WIDTH - 16, LABEL_HEIGHT,
+					hwnd,
+					NULL,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				// Create the List View control (Top Half)
+				int topHeight = UI_HEIGHT / 2;
+
+				hListView_ = CreateWindowEx(
+					WS_EX_CLIENTEDGE,
+					WC_LISTVIEWW, // Use the wide-character version
+					L"",
+					WS_CHILD | WS_VISIBLE | WS_VSCROLL | LVS_REPORT | LVS_SHOWSELALWAYS,
+					0, LABEL_HEIGHT + 4,
+					UI_WIDTH,
+					topHeight - (LABEL_HEIGHT + 4),
+					hwnd,
+					(HMENU)(UINT_PTR)ID_LISTVIEW,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				DWORD exStyle = ListView_GetExtendedListViewStyle(hListView_);
+				exStyle |= LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER;
+				ListView_SetExtendedListViewStyle(hListView_, exStyle);
+
+				// Initialize the list view columns
+				LVCOLUMNW lvc = { 0 };
+				lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+				lvc.cx = UI_WIDTH - 20; // Initial width
+				lvc.pszText = (LPWSTR)L"File Path";
+				ListView_InsertColumn(hListView_, 0, &lvc);
+
+				HWND hHeader = ListView_GetHeader(hListView_);
+				if (hHeader)
+				{
+					LONG style = GetWindowLong(hHeader, GWL_STYLE);
+
+					style &= ~HDS_HOTTRACK;
+					style &= ~HDS_BUTTONS;
+
+					SetWindowLong(hHeader, GWL_STYLE, style);
+
+					InvalidateRect(hHeader, NULL, TRUE);
+				}
+
+				int bottomY = topHeight;
+				int bottomHeight = UI_HEIGHT - topHeight;
+
+				hLabelExpr_ = CreateWindowEx(
+					0,
+					L"STATIC",
+					L"Expression Preview",
+					WS_CHILD | WS_VISIBLE | SS_LEFT,
+					8, bottomY + 4,
+					UI_WIDTH - 16, LABEL_HEIGHT,
+					hwnd,
+					NULL,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				// Create Expression Display (Bottom Half - Top)
+				int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
+				int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
+				if (exprDisplayHeight < 0) exprDisplayHeight = 0;
+
+				hExprDisplay_ = CreateWindowEx(
+					WS_EX_CLIENTEDGE,
+					L"EDIT", // EDIT control for better scrolling and word wrapping
+					L"",       // Initial text
+					WS_CHILD | WS_VISIBLE | ES_LEFT | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL,
+					0, exprDisplayY, UI_WIDTH, exprDisplayHeight,
+					hwnd,
+					(HMENU)(UINT_PTR)ID_EXPR_DISPLAY,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
+				if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
+
+				hLabelInput_ = CreateWindowEx(
+					0,
+					L"STATIC",
+					L"Input",
+					WS_CHILD | WS_VISIBLE | SS_LEFT,
+					8, inputLabelY,
+					UI_WIDTH - 16, LABEL_HEIGHT,
+					hwnd,
+					NULL,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				int inputEditY = inputLabelY + LABEL_HEIGHT;
+
+				hInputEdit_ = CreateWindowEx(
+					WS_EX_CLIENTEDGE,
+					L"EDIT",
+					L"",
+					WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE,
+					0, inputEditY, UI_WIDTH, INPUT_HEIGHT, // Initial size
+					hwnd,
+					(HMENU)(UINT_PTR)ID_INPUT_EDIT,
+					GetModuleHandle(NULL),
+					NULL
+				);
+
+				if (hFont) {
+					SendMessage(hLabelFileList_, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(hLabelExpr_, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(hLabelInput_, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(hListView_, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(hExprDisplay_, WM_SETFONT, (WPARAM)hFont, TRUE);
+					SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
+				}
+
+				UpdateMenuEnabledState(hwnd);
+
+				return 0;
+			}
+
+
+			case WM_COMMAND:
+			{
+				// Handle menu commands
+				switch (LOWORD(wParam)) {
+
+					case ID_FILE_OPEN:
+					{
+						HandleFileOpen(hwnd);
+						break;
+					}
+
+					case ID_FILE_CLEAR:
+					{
+						if (!shared_data::pt_.reset_selected_file()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						ListView_DeleteAllItems(hListView_);
+						break;
+					}
+
+					case ID_OPTIONS_SUBMIT:
+					{
+						// Call the process_lunch function
+						if (!shared_data::pt_.process_lunch()) {
+							MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+						} else {
+							UpdateMenuEnabledState(hwnd);
+						}
+						break;
+					}
+
+					case ID_OPTIONS_EXIT:
+					{
+						PostQuitMessage(0);
+						shared_data::sts_.request_stop();
+						break;
+					}
+
+
+					// Handlers for Edit Menu
+					case ID_EDIT_PUSH_STR:
+					{
+						wchar_t buffer[256] = { 0 };
+						GetWindowTextW(hInputEdit_, buffer, 256);
+						if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						SetWindowTextW(hInputEdit_, L""); // Clear input box
+						break;
+					}
+
+					case ID_EDIT_PUSH_NUM:
+					{
+						wchar_t buffer[256] = { 0 };
+						GetWindowTextW(hInputEdit_, buffer, 256);
+						try {
+							int64_t val = std::stoll(std::wstring(buffer));
+							if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
+								GuardUiOp(hwnd, false);
+								break;
+							}
+							UpdateExpressionDisplay();
+							SetWindowTextW(hInputEdit_, L""); // Clear input box
+						} catch (...) {
+							MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+						}
+						break;
+					}
+					case ID_EDIT_PUSH_IDX:
+					{
+						if (!shared_data::pt_.push_expr<calc::Index_Var>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_OFNAME:
+					{
+						if (!shared_data::pt_.push_expr<calc::OriginFileName_Var>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_NUM_FORMAT:
+					{
+						wchar_t buffer[256] = { 0 };
+						GetWindowTextW(hInputEdit_, buffer, 256);
+						try {
+							int64_t val = std::stoll(std::wstring(buffer));
+							if ((val < 0) || (val > 100)) {
+								MessageBoxW(hwnd, L"Number format out of range.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+								break;
+							}
+							if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
+								GuardUiOp(hwnd, false);
+								break;
+							}
+							UpdateExpressionDisplay();
+							SetWindowTextW(hInputEdit_, L""); // Clear input box
+						} catch (...) {
+							MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+						}
+						break;
+					}
+					case ID_EDIT_PUSH_LB:
+					{
+						if (!shared_data::pt_.push_expr<calc::Lbracket>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_RB:
+					{
+						if (!shared_data::pt_.push_expr<calc::Rbracket>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_ADD:
+					{
+						if (!shared_data::pt_.push_expr<calc::Add_Int64Opt>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_SUB:
+					{
+						if (!shared_data::pt_.push_expr<calc::Sub_Int64Opt>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_MUL:
+					{
+						if (!shared_data::pt_.push_expr<calc::Mul_Int64Opt>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_DIV:
+					{
+						if (!shared_data::pt_.push_expr<calc::Div_Int64Opt>()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_PUSH_DEL:
+					{
+						if (!shared_data::pt_.pop_expr_ptr()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+					case ID_EDIT_CLEAR:
+					{
+						if (!shared_data::pt_.reset_input_expr_ptr()) {
+							GuardUiOp(hwnd, false);
+							break;
+						}
+						UpdateExpressionDisplay();
+						break;
+					}
+
+				}
+				return 0;
+			}
+
+			case WM_SIZE:
+			{
+				int width = LOWORD(lParam);
+				int height = HIWORD(lParam);
+
+				int marginX = 20;
+				int marginY = 10;
+				int spacingY = 10;
+
+				int contentX = marginX;
+				int contentWidth = width - 2 * marginX;
+				if (contentWidth < 100) contentWidth = 100;
+
+				// Top section: List View (takes about 50%)
+				int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
+				if (listHeight < 100) listHeight = 100;
+
+				int currentY = marginY;
+
+				if (hLabelFileList_) {
+					MoveWindow(hLabelFileList_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+				}
+				currentY += LABEL_HEIGHT;
+
+				if (hListView_) {
+					MoveWindow(hListView_, contentX, currentY, contentWidth, listHeight, TRUE);
+					ListView_SetColumnWidth(hListView_, 0, contentWidth - 25); // Account for scrollbar
+				}
+				currentY += listHeight + spacingY;
+
+				if (hLabelExpr_) {
+					MoveWindow(hLabelExpr_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+				}
+				currentY += LABEL_HEIGHT;
+
+				// Middle section: Expression Display
+				int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
+				// Guarantee some height
+				if (exprHeight < 60) {
+					exprHeight = 60;
+				}
+
+				if (hExprDisplay_) {
+					MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
+				}
+				currentY += exprHeight + spacingY;
+
+				if (hLabelInput_) {
+					MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
+				}
+				currentY += LABEL_HEIGHT;
+
+				if (hInputEdit_) {
+					MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
+				}
+
+				return 0;
+			}
+
+			case WM_INITMENU:
+			case WM_INITMENUPOPUP:
+			{
+				UpdateMenuEnabledState(hwnd);
+				break;
+			}
+
+
+			case WM_CTLCOLORSTATIC:
+			{
+				HDC hdc = (HDC)wParam;
+				SetBkMode(hdc, TRANSPARENT);
+				SetTextColor(hdc, RGB(0, 0, 0));
+				return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
+			}
+
+			case WM_DESTROY:
+			{
 				shared_data::pt_.join();
 				PostQuitMessage(0);
 				shared_data::sts_.request_stop();
 				return 0;
 			}
-			break;
-		}
 
-		case WM_GETMINMAXINFO:
-		{
-			LPMINMAXINFO lpMinMaxInfo = (LPMINMAXINFO)lParam;
-			// Set a reasonable minimum tracking size
-
-			lpMinMaxInfo->ptMinTrackSize.x = 600;
-
-			lpMinMaxInfo->ptMinTrackSize.y = 400;
-			// We don't set ptMaxTrackSize, so the default (full screen) is the max.
-			return 0;
-		}
-
-		case WM_CREATE:
-		{
-			HDC hdc = GetDC(hwnd);
-			HFONT hFont = CreateFontW(-MulDiv(11, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-			ReleaseDC(hwnd, hdc);
-
-			hLabelFileList_ = CreateWindowEx(
-				0,
-				L"STATIC",
-				L"Selected Files",
-				WS_CHILD | WS_VISIBLE | SS_LEFT,
-				8, 4, UI_WIDTH - 16, LABEL_HEIGHT,
-				hwnd,
-				NULL,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			// Create the List View control (Top Half)
-			int topHeight = UI_HEIGHT / 2;
-
-			hListView_ = CreateWindowEx(
-				WS_EX_CLIENTEDGE,
-				WC_LISTVIEWW, // Use the wide-character version
-				L"",
-				WS_CHILD | WS_VISIBLE | WS_VSCROLL | LVS_REPORT | LVS_SHOWSELALWAYS,
-				0, LABEL_HEIGHT + 4,
-				UI_WIDTH,
-				topHeight - (LABEL_HEIGHT + 4),
-				hwnd,
-				(HMENU)(UINT_PTR)ID_LISTVIEW,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			DWORD exStyle = ListView_GetExtendedListViewStyle(hListView_);
-			exStyle |= LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER;
-			ListView_SetExtendedListViewStyle(hListView_, exStyle);
-
-			// Initialize the list view columns
-			LVCOLUMNW lvc = { 0 };
-			lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-			lvc.cx = UI_WIDTH - 20; // Initial width
-			lvc.pszText = (LPWSTR)L"File Path";
-			ListView_InsertColumn(hListView_, 0, &lvc);
-
-			HWND hHeader = ListView_GetHeader(hListView_);
-			if (hHeader)
+			default:
 			{
-				LONG style = GetWindowLong(hHeader, GWL_STYLE);
-
-				style &= ~HDS_HOTTRACK;
-				style &= ~HDS_BUTTONS;
-
-				SetWindowLong(hHeader, GWL_STYLE, style);
-
-				InvalidateRect(hHeader, NULL, TRUE);
+				break;
 			}
-
-			int bottomY = topHeight;
-			int bottomHeight = UI_HEIGHT - topHeight;
-
-			hLabelExpr_ = CreateWindowEx(
-				0,
-				L"STATIC",
-				L"Expression Preview",
-				WS_CHILD | WS_VISIBLE | SS_LEFT,
-				8, bottomY + 4,
-				UI_WIDTH - 16, LABEL_HEIGHT,
-				hwnd,
-				NULL,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			// Create Expression Display (Bottom Half - Top)
-			int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
-			int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
-			if (exprDisplayHeight < 0) exprDisplayHeight = 0;
-
-			hExprDisplay_ = CreateWindowEx(
-				WS_EX_CLIENTEDGE,
-				L"EDIT", // EDIT control for better scrolling and word wrapping
-				L"",       // Initial text
-				WS_CHILD | WS_VISIBLE | ES_LEFT | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL,
-				0, exprDisplayY, UI_WIDTH, exprDisplayHeight,
-				hwnd,
-				(HMENU)(UINT_PTR)ID_EXPR_DISPLAY,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
-			if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
-
-			hLabelInput_ = CreateWindowEx(
-				0,
-				L"STATIC",
-				L"Input",
-				WS_CHILD | WS_VISIBLE | SS_LEFT,
-				8, inputLabelY,
-				UI_WIDTH - 16, LABEL_HEIGHT,
-				hwnd,
-				NULL,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			int inputEditY = inputLabelY + LABEL_HEIGHT;
-
-			hInputEdit_ = CreateWindowEx(
-				WS_EX_CLIENTEDGE,
-				L"EDIT",
-				L"",
-				WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE,
-				0, inputEditY, UI_WIDTH, INPUT_HEIGHT, // Initial size
-				hwnd,
-				(HMENU)(UINT_PTR)ID_INPUT_EDIT,
-				GetModuleHandle(NULL),
-				NULL
-			);
-
-			if (hFont) {
-				SendMessage(hLabelFileList_, WM_SETFONT, (WPARAM)hFont, TRUE);
-				SendMessage(hLabelExpr_, WM_SETFONT, (WPARAM)hFont, TRUE);
-				SendMessage(hLabelInput_, WM_SETFONT, (WPARAM)hFont, TRUE);
-				SendMessage(hListView_, WM_SETFONT, (WPARAM)hFont, TRUE);
-				SendMessage(hExprDisplay_, WM_SETFONT, (WPARAM)hFont, TRUE);
-				SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
-			}
-
-			UpdateMenuEnabledState(hwnd);
-
-			return 0;
-		}
-
-
-		case WM_COMMAND:
-		{
-			// Handle menu commands
-			switch (LOWORD(wParam)) {
-
-				case ID_FILE_OPEN:
-				{
-					HandleFileOpen(hwnd);
-					break;
-				}
-
-				case ID_FILE_CLEAR:
-				{
-					if (!shared_data::pt_.reset_selected_file()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					ListView_DeleteAllItems(hListView_);
-					break;
-				}
-
-				case ID_OPTIONS_SUBMIT:
-				{
-					// Call the process_lunch function
-					if (!shared_data::pt_.process_lunch()) {
-						MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
-					} else {
-						UpdateMenuEnabledState(hwnd);
-					}
-					break;
-				}
-
-				case ID_OPTIONS_EXIT:
-				{
-					PostQuitMessage(0);
-					shared_data::sts_.request_stop();
-					break;
-				}
-
-
-				// Handlers for Edit Menu
-				case ID_EDIT_PUSH_STR:
-				{
-					wchar_t buffer[256] = { 0 };
-					GetWindowTextW(hInputEdit_, buffer, 256);
-					if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					SetWindowTextW(hInputEdit_, L""); // Clear input box
-					break;
-				}
-
-				case ID_EDIT_PUSH_NUM:
-				{
-					wchar_t buffer[256] = { 0 };
-					GetWindowTextW(hInputEdit_, buffer, 256);
-					try {
-						int64_t val = std::stoll(std::wstring(buffer));
-						if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
-							GuardUiOp(hwnd, false);
-							break;
-						}
-						UpdateExpressionDisplay();
-						SetWindowTextW(hInputEdit_, L""); // Clear input box
-					} catch (...) {
-						MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-					}
-					break;
-				}
-				case ID_EDIT_PUSH_IDX:
-				{
-					if (!shared_data::pt_.push_expr<calc::Index_Var>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_OFNAME:
-				{
-					if (!shared_data::pt_.push_expr<calc::OriginFileName_Var>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_NUM_FORMAT:
-				{
-					wchar_t buffer[256] = { 0 };
-					GetWindowTextW(hInputEdit_, buffer, 256);
-					try {
-						int64_t val = std::stoll(std::wstring(buffer));
-						if ((val < 0) || (val > 100)) {
-							MessageBoxW(hwnd, L"Number format out of range.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-							break;
-						}
-						if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
-							GuardUiOp(hwnd, false);
-							break;
-						}
-						UpdateExpressionDisplay();
-						SetWindowTextW(hInputEdit_, L""); // Clear input box
-					} catch (...) {
-						MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-					}
-					break;
-				}
-				case ID_EDIT_PUSH_LB:
-				{
-					if (!shared_data::pt_.push_expr<calc::Lbracket>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_RB:
-				{
-					if (!shared_data::pt_.push_expr<calc::Rbracket>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_ADD:
-				{
-					if (!shared_data::pt_.push_expr<calc::Add_Int64Opt>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_SUB:
-				{
-					if (!shared_data::pt_.push_expr<calc::Sub_Int64Opt>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_MUL:
-				{
-					if (!shared_data::pt_.push_expr<calc::Mul_Int64Opt>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_DIV:
-				{
-					if (!shared_data::pt_.push_expr<calc::Div_Int64Opt>()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_PUSH_DEL:
-				{
-					if (!shared_data::pt_.pop_expr_ptr()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-				case ID_EDIT_CLEAR:
-				{
-					if (!shared_data::pt_.reset_input_expr_ptr()) {
-						GuardUiOp(hwnd, false);
-						break;
-					}
-					UpdateExpressionDisplay();
-					break;
-				}
-
-			}
-			return 0;
-		}
-
-		case WM_SIZE:
-		{
-			int width = LOWORD(lParam);
-			int height = HIWORD(lParam);
-
-			int marginX = 20;
-			int marginY = 10;
-			int spacingY = 10;
-
-			int contentX = marginX;
-			int contentWidth = width - 2 * marginX;
-			if (contentWidth < 100) contentWidth = 100;
-
-			// Top section: List View (takes about 50%)
-			int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
-			if (listHeight < 100) listHeight = 100;
-
-			int currentY = marginY;
-
-			if (hLabelFileList_) {
-				MoveWindow(hLabelFileList_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-			}
-			currentY += LABEL_HEIGHT;
-
-			if (hListView_) {
-				MoveWindow(hListView_, contentX, currentY, contentWidth, listHeight, TRUE);
-				ListView_SetColumnWidth(hListView_, 0, contentWidth - 25); // Account for scrollbar
-			}
-			currentY += listHeight + spacingY;
-
-			if (hLabelExpr_) {
-				MoveWindow(hLabelExpr_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-			}
-			currentY += LABEL_HEIGHT;
-
-			// Middle section: Expression Display
-			int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
-			// Guarantee some height
-			if (exprHeight < 60) {
-				exprHeight = 60;
-			}
-
-			if (hExprDisplay_) {
-				MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
-			}
-			currentY += exprHeight + spacingY;
-
-			if (hLabelInput_) {
-				MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-			}
-			currentY += LABEL_HEIGHT;
-
-			if (hInputEdit_) {
-				MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
-			}
-
-			return 0;
-		}
-
-		case WM_INITMENU:
-		case WM_INITMENUPOPUP:
-		{
-			UpdateMenuEnabledState(hwnd);
-			break;
-		}
-
-
-		case WM_CTLCOLORSTATIC:
-		{
-			HDC hdc = (HDC)wParam;
-			SetBkMode(hdc, TRANSPARENT);
-			SetTextColor(hdc, RGB(0, 0, 0));
-			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
-		}
-
-		case WM_DESTROY:
-		{
-			shared_data::pt_.join();
-			PostQuitMessage(0);
-			shared_data::sts_.request_stop();
-			return 0;
-		}
-
-		default:
-			break;
 
 		}
 
