@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <unordered_map>
+#include <algorithm>
 
 namespace pt {
 
@@ -53,7 +54,8 @@ private:
 	inline static std::wstring old_dir;
 
 	std::thread rename_thread;
-	void rename_thread_assist() {
+
+	void rename_thread_assist_expr() {
 		state_.store(STATE_ONGOING, std::memory_order_release);
 
 		std::vector<std::wstring> vec_filepath;
@@ -139,6 +141,98 @@ private:
 		
 	}
 
+	void rename_thread_assist_auto() {
+		state_.store(STATE_ONGOING, std::memory_order_release);
+
+		std::vector<std::wstring> vec_filepath;
+		std::vector<std::wstring> vec_newname;
+		{
+			auto lck = vec_filepath_cache.AcquireLock();
+			vec_filepath = *lck;
+		}
+
+		std::vector<std::wstring> video_files;
+		std::vector<std::wstring> subtitle_files;
+		std::vector<std::wstring> other_files;
+
+		for (auto& path : vec_filepath) {
+			path = MakeLongPath(path);
+
+			std::wstring ext = std::filesystem::path(path).extension().wstring();
+			for (auto& c : ext) {
+				if (c >= L'A' && c <= L'Z') c = c - L'A' + L'a';
+			}
+
+			if (ext == L".mp4" || ext == L".mkv" || ext == L".avi" || ext == L".wmv" || ext == L".mov" || ext == L".flv") {
+				video_files.push_back(path);
+			} else if (ext == L".srt" || ext == L".ass" || ext == L".ssa" || ext == L".vtt") {
+				subtitle_files.push_back(path);
+			} else {
+				other_files.push_back(path);
+			}
+		}
+
+		if (video_files.size() != subtitle_files.size()) {
+			std::wstringstream wss;
+			wss << L"Failed: Number of video files and subtitle files do not match.";
+			{
+				auto lck = res_wstr.AcquireLock();
+				*lck = wss.str();
+			}
+		} else {
+			std::sort(video_files.begin(), video_files.end());
+			std::sort(subtitle_files.begin(), subtitle_files.end());
+
+			try {
+				for (size_t i = 0; i < video_files.size(); ++i) {
+					std::filesystem::path v_path(video_files[i]);
+					std::filesystem::path s_path(subtitle_files[i]);
+
+					std::filesystem::path new_s_path = v_path;
+					new_s_path.replace_extension(s_path.extension());
+
+					if (!std::filesystem::exists(s_path)) throw std::runtime_error("Subtitle file doesn't exist !");
+					if (std::filesystem::exists(new_s_path) && s_path != new_s_path) throw std::runtime_error("Target subtitle file already exists !");
+
+					if (s_path != new_s_path) {
+						std::filesystem::rename(s_path, new_s_path);
+					}
+				}
+
+				std::wstringstream wss;
+				wss << L"Successfully renamed " << subtitle_files.size() << L" subtitles.";
+				{
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
+				}
+			} catch (const std::filesystem::filesystem_error& e) {
+				std::wstringstream wss;
+				wss << e.what();
+				{
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
+				}
+			} catch (const std::runtime_error& re) {
+				std::wstringstream wss;
+				wss << re.what();
+				{
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
+				}
+			} catch (...) {
+				std::wstringstream wss;
+				wss << L"Unknown Error !";
+				{
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
+				}
+			}
+		}
+
+		state_.store(STATE_READY, std::memory_order_release);
+		msg_box_.store(true, std::memory_order_release);
+	}
+
 	inline static std::unordered_map< int64_t, std::function< std::wstring(const std::unique_ptr<calc::Element>&) > > func_umap {
 		{
 			'S',
@@ -210,10 +304,32 @@ public:
 		return old_dir;
 	}
 
-	bool process_lunch() {
+	bool process_launch(const int opt_type) {
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
+
 		if (rename_thread.joinable()) rename_thread.join();
-		rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist, this));
+		state_.store(STATE_ONGOING, std::memory_order_release);
+
+		switch (opt_type)
+		{
+			case 0:
+			{
+				rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist_expr, this));
+				break;
+			}
+
+			case 1:
+			{
+				rename_thread = std::thread(std::bind(&ProcessThread::rename_thread_assist_auto, this));
+				break;
+			}
+
+			default:
+			{
+				break;
+			}
+		}
+
 		return true;
 	}
 

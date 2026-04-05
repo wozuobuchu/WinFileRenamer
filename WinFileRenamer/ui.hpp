@@ -41,6 +41,7 @@ namespace ui {
 	constexpr int ID_FILE_CLEAR = 1002;
 	constexpr int ID_LISTVIEW = 1003;
 	constexpr int ID_OPTIONS_SUBMIT = 1004;
+	constexpr int ID_OPTIONS_SUBMIT_AUTO = 1005;
 
 	constexpr int ID_OPTIONS_EXIT = 9002;
 
@@ -94,6 +95,7 @@ namespace ui {
 		const wchar_t* fileOpen;
 		const wchar_t* fileClear;
 		const wchar_t* fileSubmit;
+		const wchar_t* fileSubmitAuto;
 
 		const wchar_t* exprConstants;
 		const wchar_t* exprPushStr;
@@ -130,7 +132,7 @@ namespace ui {
 
 	inline UIStrings strings_en = {
 		L"File", L"Expression", L"Options",
-		L"Open", L"Clear", L"Submit Rename",
+		L"Open", L"Clear", L"Submit Rename", L"Auto Match Subtitles",
 		L"Constants", L"Push String [INPUT]", L"Push Number [INPUT]", L"Push Minimum Num Length [INPUT]",
 		L"Variables", L"Push Index", L"Push OriginFileName",
 		L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
@@ -142,7 +144,7 @@ namespace ui {
 
 	inline UIStrings strings_zh = {
 		L"文件", L"表达式", L"选项",
-		L"打开", L"清空", L"应用重命名",
+		L"打开", L"清空", L"应用重命名", L"自动匹配字幕名",
 		L"常量", L"添加字符串 [输入框]", L"添加数字 [输入框]", L"添加最小数字格式 [输入框]",
 		L"变量", L"添加序号", L"添加原始文件名",
 		L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
@@ -200,6 +202,7 @@ namespace ui {
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, s.fileOpen);
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, s.fileClear);
 		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, s.fileSubmit);
+		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT_AUTO, s.fileSubmitAuto);
 
 		HMENU hConstMenu = CreatePopupMenu();
 		AppendMenu(hConstMenu, MF_STRING, ID_EDIT_PUSH_STR, s.exprPushStr);
@@ -542,7 +545,17 @@ namespace ui {
 					case ID_OPTIONS_SUBMIT:
 					{
 						// Call the process_lunch function
-						if (!shared_data::pt_.process_lunch()) {
+						if (!shared_data::pt_.process_launch(0)) {
+							MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+						} else {
+							UpdateMenuEnabledState(hwnd);
+						}
+						break;
+					}
+
+					case ID_OPTIONS_SUBMIT_AUTO:
+					{
+						if (!shared_data::pt_.process_launch(1)) {
 							MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 						} else {
 							UpdateMenuEnabledState(hwnd);
