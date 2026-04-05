@@ -58,6 +58,9 @@ namespace ui {
 	constexpr int ID_EDIT_PUSH_NUM_FORMAT = 2012;
 	constexpr int ID_EDIT_CLEAR = 2013;
 
+	constexpr int ID_LANG_EN = 9003;
+	constexpr int ID_LANG_ZH = 9004;
+
 	constexpr int ID_EXPR_DISPLAY = 8001;
 	constexpr int ID_INPUT_EDIT = 8002;
 
@@ -79,6 +82,79 @@ namespace ui {
 	constexpr int CONTENT_MAX_WIDTH = 1000;
 
 	inline std::wstring oldDir;
+
+	enum class Lang { EN, ZH };
+	inline Lang default_lang = Lang::EN;
+
+	struct UIStrings {
+		const wchar_t* fileMenu;
+		const wchar_t* exprMenu;
+		const wchar_t* optionMenu;
+
+		const wchar_t* fileOpen;
+		const wchar_t* fileClear;
+		const wchar_t* fileSubmit;
+
+		const wchar_t* exprConstants;
+		const wchar_t* exprPushStr;
+		const wchar_t* exprPushNum;
+		const wchar_t* exprPushFmt;
+
+		const wchar_t* exprVars;
+		const wchar_t* exprPushIdx;
+		const wchar_t* exprPushOfname;
+
+		const wchar_t* exprOps;
+		const wchar_t* exprPushAdd;
+		const wchar_t* exprPushSub;
+		const wchar_t* exprPushMul;
+		const wchar_t* exprPushDiv;
+
+		const wchar_t* exprBrackets;
+		const wchar_t* exprPushLb;
+		const wchar_t* exprPushRb;
+
+		const wchar_t* exprDel;
+		const wchar_t* exprClear;
+
+		const wchar_t* optLang;
+		const wchar_t* optLangEn;
+		const wchar_t* optLangZh;
+		const wchar_t* optExit;
+
+		const wchar_t* labelFileList;
+		const wchar_t* labelExprPreview;
+		const wchar_t* labelInput;
+		const wchar_t* lvColFilePath;
+	};
+
+	inline UIStrings strings_en = {
+		L"File", L"Expression", L"Options",
+		L"Open", L"Clear", L"Submit Rename",
+		L"Constants", L"Push String [INPUT]", L"Push Number [INPUT]", L"Push Minimum Num Length [INPUT]",
+		L"Variables", L"Push Index", L"Push OriginFileName",
+		L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
+		L"Brackets", L"Left Bracket (", L"Right Bracket )",
+		L"Delete Last", L"Clear Expression",
+		L"Language", L"English", L"Chinese", L"Exit",
+		L"Selected Files", L"Expression Preview", L"Input", L"File Path"
+	};
+
+	inline UIStrings strings_zh = {
+		L"文件", L"表达式", L"选项",
+		L"打开", L"清空", L"应用重命名",
+		L"常量", L"添加字符串 [输入框]", L"添加数字 [输入框]", L"添加最小数字格式 [输入框]",
+		L"变量", L"添加序号", L"添加原始文件名",
+		L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
+		L"括号", L"左括号 (", L"右括号 )",
+		L"删除上一个", L"清空表达式",
+		L"语言", L"English", L"中文", L"退出",
+		L"已选文件", L"表达式预览", L"输入框", L"文件路径"
+	};
+
+	inline const UIStrings& GetStrings() {
+		return default_lang == Lang::ZH ? strings_zh : strings_en;
+	}
 
 	struct RegisterReturn {
 		WNDCLASSEX* wndclass;
@@ -109,10 +185,82 @@ namespace ui {
 		const bool ongoing = (shared_data::pt_.get_state() == pt::ProcessThread::STATE_ONGOING);
 		const UINT flags = MF_BYPOSITION | (ongoing ? (MF_GRAYED | MF_DISABLED) : MF_ENABLED);
 
-		// Menu bar order is: Option (0), File (1), Edit (2)
+		// Menu bar order is: File (0), Expression (1), Option (2)
+		EnableMenuItem(hMenu, 0, flags);
 		EnableMenuItem(hMenu, 1, flags);
-		EnableMenuItem(hMenu, 2, flags);
 		DrawMenuBar(hwnd);
+	}
+
+	inline void RebuildMenu(HWND hwnd) {
+		HMENU hOldMenu = GetMenu(hwnd);
+		const auto& s = GetStrings();
+		HMENU hMenu = CreateMenu();
+
+		HMENU hFileMenu = CreatePopupMenu();
+		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, s.fileOpen);
+		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, s.fileClear);
+		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, s.fileSubmit);
+
+		HMENU hConstMenu = CreatePopupMenu();
+		AppendMenu(hConstMenu, MF_STRING, ID_EDIT_PUSH_STR, s.exprPushStr);
+		AppendMenu(hConstMenu, MF_STRING, ID_EDIT_PUSH_NUM, s.exprPushNum);
+		AppendMenu(hConstMenu, MF_STRING, ID_EDIT_PUSH_NUM_FORMAT, s.exprPushFmt);
+
+		HMENU hVarsMenu = CreatePopupMenu();
+		AppendMenu(hVarsMenu, MF_STRING, ID_EDIT_PUSH_IDX, s.exprPushIdx);
+		AppendMenu(hVarsMenu, MF_STRING, ID_EDIT_PUSH_OFNAME, s.exprPushOfname);
+
+		HMENU hOpsMenu = CreatePopupMenu();
+		AppendMenu(hOpsMenu, MF_STRING, ID_EDIT_PUSH_ADD, s.exprPushAdd);
+		AppendMenu(hOpsMenu, MF_STRING, ID_EDIT_PUSH_SUB, s.exprPushSub);
+		AppendMenu(hOpsMenu, MF_STRING, ID_EDIT_PUSH_MUL, s.exprPushMul);
+		AppendMenu(hOpsMenu, MF_STRING, ID_EDIT_PUSH_DIV, s.exprPushDiv);
+
+		HMENU hBracketsMenu = CreatePopupMenu();
+		AppendMenu(hBracketsMenu, MF_STRING, ID_EDIT_PUSH_LB, s.exprPushLb);
+		AppendMenu(hBracketsMenu, MF_STRING, ID_EDIT_PUSH_RB, s.exprPushRb);
+
+		HMENU hEditMenu = CreatePopupMenu();
+		AppendMenu(hEditMenu, MF_POPUP, (UINT_PTR)hConstMenu, s.exprConstants);
+		AppendMenu(hEditMenu, MF_POPUP, (UINT_PTR)hVarsMenu, s.exprVars);
+		AppendMenu(hEditMenu, MF_POPUP, (UINT_PTR)hOpsMenu, s.exprOps);
+		AppendMenu(hEditMenu, MF_POPUP, (UINT_PTR)hBracketsMenu, s.exprBrackets);
+		AppendMenu(hEditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(hEditMenu, MF_STRING, ID_EDIT_PUSH_DEL, s.exprDel);
+		AppendMenu(hEditMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(hEditMenu, MF_STRING, ID_EDIT_CLEAR, s.exprClear);
+
+		HMENU hLangMenu = CreatePopupMenu();
+		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::EN ? MF_CHECKED : MF_UNCHECKED), ID_LANG_EN, s.optLangEn);
+		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::ZH ? MF_CHECKED : MF_UNCHECKED), ID_LANG_ZH, s.optLangZh);
+
+		HMENU hOptionMenu = CreatePopupMenu();
+		AppendMenu(hOptionMenu, MF_POPUP, (UINT_PTR)hLangMenu, s.optLang);
+		AppendMenu(hOptionMenu, MF_STRING, ID_OPTIONS_EXIT, s.optExit);
+
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hFileMenu, s.fileMenu);
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hEditMenu, s.exprMenu);
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hOptionMenu, s.optionMenu);
+
+		SetMenu(hwnd, hMenu);
+		if (hOldMenu) DestroyMenu(hOldMenu);
+		UpdateMenuEnabledState(hwnd);
+	}
+
+	inline void UpdateLanguageUI(HWND hwnd) {
+		const auto& s = GetStrings();
+		if (hLabelFileList_) SetWindowTextW(hLabelFileList_, s.labelFileList);
+		if (hLabelExpr_) SetWindowTextW(hLabelExpr_, s.labelExprPreview);
+		if (hLabelInput_) SetWindowTextW(hLabelInput_, s.labelInput);
+
+		if (hListView_) {
+			LVCOLUMNW lvc;
+			lvc.mask = LVCF_TEXT;
+			lvc.pszText = (LPWSTR)s.lvColFilePath;
+			ListView_SetColumn(hListView_, 0, &lvc);
+		}
+
+		RebuildMenu(hwnd);
 	}
 
 
@@ -409,6 +557,20 @@ namespace ui {
 						break;
 					}
 
+					case ID_LANG_EN:
+					{
+						default_lang = Lang::EN;
+						UpdateLanguageUI(hwnd);
+						break;
+					}
+
+					case ID_LANG_ZH:
+					{
+						default_lang = Lang::ZH;
+						UpdateLanguageUI(hwnd);
+						break;
+					}
+
 
 					// Handlers for Edit Menu
 					case ID_EDIT_PUSH_STR:
@@ -698,53 +860,6 @@ namespace ui {
 			return ret;
 		}
 
-		// --- Create the menu ---
-		HMENU hMenu = CreateMenu();
-
-		HMENU OptionMenu = CreatePopupMenu();
-		HMENU hFileMenu = CreatePopupMenu();
-		HMENU EditMenu = CreatePopupMenu();
-
-		// Append the "Exit" submenu to the options menu bar
-		AppendMenu(OptionMenu, MF_STRING, ID_OPTIONS_EXIT, TEXT("Exit"));
-
-		// Append "Open" and "Clear" to the "File" submenu
-		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, TEXT("Open"));
-		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, TEXT("Clear"));
-		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, TEXT("Submit Rename"));
-
-		// Append expression element to the "Edit" submenu
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_STR, TEXT("Push Wstring [ STR ] [ INPUT ]"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM, TEXT("Push Number  [ INT ] [ INPUT ]"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_IDX, TEXT("Push Index [ VAR ]"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_OFNAME, TEXT("Push OriginFileName [ VAR ]"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_NUM_FORMAT, TEXT("Push MinimunNumLength [ FMT*INT -> STR ] [ INPUT ]"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_LB, TEXT("LB ("));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_RB, TEXT("RB )"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_ADD, TEXT("Push +"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_SUB, TEXT("Push -"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_MUL, TEXT("Push *"));
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_DIV, TEXT("Push /"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_PUSH_DEL, TEXT("Delete"));
-		AppendMenu(EditMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(EditMenu, MF_STRING, ID_EDIT_CLEAR, TEXT("Clear"));
-
-		// Append the "Options" submenu to the main menu bar
-		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)OptionMenu, TEXT("Option"));
-
-		// Append the "File" submenu to the main menu bar
-		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hFileMenu, TEXT("File"));
-
-		// Append the "Edit" submenu to the main menu bar
-		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)EditMenu, TEXT("Edit"));
-
-		// --- End menu creation ---
-
 		HWND hwnd = CreateWindowEx(
 			WS_EX_CLIENTEDGE,
 			wndclass->lpszClassName,
@@ -753,7 +868,7 @@ namespace ui {
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			UI_WIDTH, UI_HEIGHT,
 			NULL,
-			hMenu, // Assign the menu to the window
+			NULL,
 			hInstance,
 			NULL
 		);
@@ -763,6 +878,8 @@ namespace ui {
 			shared_data::sts_.request_stop();
 			return ret;
 		}
+
+		UpdateLanguageUI(hwnd);
 
 		ret.wndclass = wndclass;
 		ret.hwnd = hwnd;
