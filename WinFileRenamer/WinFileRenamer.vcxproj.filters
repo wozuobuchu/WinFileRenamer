@@ -58,25 +58,20 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\img\cover.png">
-      <Filter>源文件</Filter>
-    </Image>
     <Image Include="icon1.ico">
       <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="..\img\pic_cn.png">
+      <Filter>源文件</Filter>
+    </Image>
+    <Image Include="..\img\pic_en.png">
+      <Filter>源文件</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\README.md">
       <Filter>源文件</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\README_en-US.md">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="..\README_zh-CN.md">
-      <Filter>源文件</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="app.manifest">

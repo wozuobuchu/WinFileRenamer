@@ -142,15 +142,12 @@
     <ClInclude Include="update_main.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\img\cover.png" />
+    <Image Include="..\img\pic_cn.png" />
+    <Image Include="..\img\pic_en.png" />
     <Image Include="icon1.ico" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\README.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\README_en-US.md" />
-    <None Include="..\README_zh-CN.md" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="app.manifest" />
