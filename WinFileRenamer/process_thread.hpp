@@ -46,7 +46,7 @@ private:
 
 	aop::LockBox<std::vector<std::wstring>> vec_filepath_cache;
 
-	aop::LockBox<std::vector<std::shared_ptr<calc::Element>>> input_expr;
+	aop::LockBox<std::vector<std::unique_ptr<calc::Element>>> input_expr;
 
 	aop::LockBox<std::wstring> res_wstr;
 
@@ -69,7 +69,7 @@ private:
 			auto lck = input_expr.AcquireLock();
 			// Check if pointer is valid before generating
 			if (lck->empty()) throw std::runtime_error("Expression is empty!");
-			std::vector<std::shared_ptr<calc::Element>> rpn = calc::generate_rpn(*lck);
+			std::vector<std::unique_ptr<calc::Element>> rpn = calc::generate_rpn(*lck);
 
 			for (size_t var_idex = 0; var_idex < vec_filepath.size(); ++var_idex) {
 				const std::wstring& ofname = vec_filepath[var_idex];
@@ -139,25 +139,25 @@ private:
 		
 	}
 
-	inline static std::unordered_map< int64_t, std::function< std::wstring(const std::shared_ptr<calc::Element>&) > > func_umap {
+	inline static std::unordered_map< int64_t, std::function< std::wstring(const std::unique_ptr<calc::Element>&) > > func_umap {
 		{
 			'S',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-				auto str_ptr = std::static_pointer_cast<calc::Str>(elem);
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				auto str_ptr = static_cast<calc::Str*>(elem.get());
 				return L"\"" + str_ptr->get_str() + L"\" ";
 			}
 		},
 		{
 			'Z',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-				auto int_ptr = std::static_pointer_cast<calc::Int64>(elem);
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				auto int_ptr = static_cast<calc::Int64*>(elem.get());
 				return int_ptr->get_str() + L" ";
 			}
 		},
 		{
 			'X',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-				auto var_ptr = std::static_pointer_cast<calc::Var>(elem);
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				auto var_ptr = static_cast<calc::Var*>(elem.get());
 				int64_t var_type = var_ptr->get_var_type();
 				if (var_type == 'I') {
 					return L"INDEX ";
@@ -170,20 +170,20 @@ private:
 		},
 		{
 			'(',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
 				return L"( ";
 			}
 		},
 		{
 			')',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
 				return L") ";
 			}
 		},
 		{
 			'#',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-				auto opt_ptr = std::static_pointer_cast<calc::Int64Opt>(elem);
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				auto opt_ptr = static_cast<calc::Int64Opt*>(elem.get());
 				std::wstringstream wss;
 				wss << (wchar_t)opt_ptr->get_opt_type() << L" ";
 				return wss.str();
@@ -191,8 +191,8 @@ private:
 		},
 		{
 			'F',
-			[](const std::shared_ptr<calc::Element>& elem) -> std::wstring {
-				auto fptr = std::static_pointer_cast<calc::Int64_Format>(elem);
+			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				auto fptr = static_cast<calc::Int64_Format*>(elem.get());
 				std::wstringstream wss;
 				wss << L"NUM_FORMAT_" << fptr->get_min_length() << L" ";
 				return wss.str();
@@ -280,7 +280,7 @@ public:
 
 		{
 			auto lck = input_expr.AcquireLock();
-			lck->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
+			lck->emplace_back(std::make_unique<PtrType>(std::forward<Args>(args)...));
 		}
 
 		return true;
