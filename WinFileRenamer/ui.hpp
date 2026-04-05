@@ -23,8 +23,7 @@
 #include <sstream>
 #include <exception>
 
-#include "calc.hpp"
-#include "process_thread.hpp"
+#include "shared_data.hpp"
 
 // Link the common controls library
 #pragma comment(lib, "Comctl32.lib")
@@ -62,10 +61,6 @@ namespace ui {
 	constexpr int ID_EXPR_DISPLAY = 8001;
 	constexpr int ID_INPUT_EDIT = 8002;
 
-
-	std::stop_source sts_ui_;
-
-	pt::ProcessThread pt_;
 
 	// Handle for the list view control
 	static HWND hListView_ = NULL;
@@ -111,7 +106,7 @@ namespace ui {
 		HMENU hMenu = GetMenu(hwnd);
 		if (!hMenu) return;
 
-		const bool ongoing = (pt_.get_state() == pt::ProcessThread::STATE_ONGOING);
+		const bool ongoing = (shared_data::pt_.get_state() == pt::ProcessThread::STATE_ONGOING);
 		const UINT flags = MF_BYPOSITION | (ongoing ? (MF_GRAYED | MF_DISABLED) : MF_ENABLED);
 
 		// Menu bar order is: Option (0), File (1), Edit (2)
@@ -125,7 +120,7 @@ namespace ui {
 	inline void UpdateExpressionDisplay() {
 		try {
 			if (hExprDisplay_) {
-				std::wstring exprStr = pt_.get_expression_str();
+				std::wstring exprStr = shared_data::pt_.get_expression_str();
 				SetWindowTextW(hExprDisplay_, exprStr.c_str());
 			}
 		} catch (...) {
@@ -152,7 +147,7 @@ namespace ui {
 		}
 
 		// Keep UI/backend consistent: if backend rejects, rollback the UI insertion.
-		if (!pt_.push_filepath(filePath)) {
+		if (!shared_data::pt_.push_filepath(filePath)) {
 			ListView_DeleteItem(hListView_, inserted);
 			return GuardUiOp(hwnd, false);
 		}
@@ -164,7 +159,7 @@ namespace ui {
 	// Helper function to handle the "Open File" dialog logic
 	inline void HandleFileOpen(HWND hwnd) {
 		// Reject file selection while background rename is running.
-		if (pt_.get_state() == pt::ProcessThread::STATE_ONGOING) {
+		if (shared_data::pt_.get_state() == pt::ProcessThread::STATE_ONGOING) {
 			GuardUiOp(hwnd, false);
 			return;
 		}
@@ -218,9 +213,9 @@ namespace ui {
 		case WM_SYSCOMMAND:
 		{
 			if (wParam == SC_CLOSE) {
-				pt_.join();
+				shared_data::pt_.join();
 				PostQuitMessage(0);
-				sts_ui_.request_stop();
+				shared_data::sts_ui_.request_stop();
 				return 0;
 			}
 			break;
@@ -383,7 +378,7 @@ namespace ui {
 				break;
 			case ID_FILE_CLEAR:
 				// Clear all items from the list view (only if backend accepts it)
-				if (!pt_.reset_selected_file()) {
+				if (!shared_data::pt_.reset_selected_file()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
@@ -391,7 +386,7 @@ namespace ui {
 				break;
 			case ID_OPTIONS_SUBMIT:
 				// Call the process_lunch function
-				if (!pt_.process_lunch()) {
+				if (!shared_data::pt_.process_lunch()) {
 					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 				}
 				else {
@@ -400,7 +395,7 @@ namespace ui {
 				break;
 			case ID_OPTIONS_EXIT:
 				PostQuitMessage(0);
-				sts_ui_.request_stop();
+				shared_data::sts_ui_.request_stop();
 				break;
 
 				// Handlers for Edit Menu
@@ -409,7 +404,7 @@ namespace ui {
 			{
 				wchar_t buffer[256] = { 0 };
 				GetWindowTextW(hInputEdit_, buffer, 256);
-				if (!pt_.push_expr<calc::Str>(std::wstring(buffer))) {
+				if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
@@ -424,7 +419,7 @@ namespace ui {
 				GetWindowTextW(hInputEdit_, buffer, 256);
 				try {
 					int64_t val = std::stoll(std::wstring(buffer));
-					if (!pt_.push_expr<calc::Int64>(val)) {
+					if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
 						GuardUiOp(hwnd, false);
 						break;
 					}
@@ -436,14 +431,14 @@ namespace ui {
 				break;
 			}
 			case ID_EDIT_PUSH_IDX:
-				if (!pt_.push_expr<calc::Index_Var>()) {
+				if (!shared_data::pt_.push_expr<calc::Index_Var>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_OFNAME:
-				if (!pt_.push_expr<calc::OriginFileName_Var>()) {
+				if (!shared_data::pt_.push_expr<calc::OriginFileName_Var>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
@@ -456,7 +451,7 @@ namespace ui {
 				GetWindowTextW(hInputEdit_, buffer, 256);
 				try {
 					int64_t val = std::stoll(std::wstring(buffer));
-					if (!pt_.push_expr<calc::Int64_Format>(val)) {
+					if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
 						GuardUiOp(hwnd, false);
 						break;
 					}
@@ -469,56 +464,56 @@ namespace ui {
 				break;
 			}
 			case ID_EDIT_PUSH_LB:
-				if (!pt_.push_expr<calc::Lbracket>()) {
+				if (!shared_data::pt_.push_expr<calc::Lbracket>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_RB:
-				if (!pt_.push_expr<calc::Rbracket>()) {
+				if (!shared_data::pt_.push_expr<calc::Rbracket>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_ADD:
-				if (!pt_.push_expr<calc::Add_Int64Opt>()) {
+				if (!shared_data::pt_.push_expr<calc::Add_Int64Opt>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_SUB:
-				if (!pt_.push_expr<calc::Sub_Int64Opt>()) {
+				if (!shared_data::pt_.push_expr<calc::Sub_Int64Opt>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_MUL:
-				if (!pt_.push_expr<calc::Mul_Int64Opt>()) {
+				if (!shared_data::pt_.push_expr<calc::Mul_Int64Opt>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_DIV:
-				if (!pt_.push_expr<calc::Div_Int64Opt>()) {
+				if (!shared_data::pt_.push_expr<calc::Div_Int64Opt>()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_PUSH_DEL:
-				if (!pt_.pop_expr_ptr()) {
+				if (!shared_data::pt_.pop_expr_ptr()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
 				UpdateExpressionDisplay();
 				break;
 			case ID_EDIT_CLEAR:
-				if (!pt_.reset_input_expr_ptr()) {
+				if (!shared_data::pt_.reset_input_expr_ptr()) {
 					GuardUiOp(hwnd, false);
 					break;
 				}
@@ -668,9 +663,9 @@ namespace ui {
 
 		case WM_DESTROY:
 		{
-			pt_.join();
+			shared_data::pt_.join();
 			PostQuitMessage(0);
-			sts_ui_.request_stop();
+			shared_data::sts_ui_.request_stop();
 			return 0;
 		}
 
@@ -695,7 +690,7 @@ namespace ui {
 			}
 		}
 
-		pt_.set_old_dir(ui::oldDir);
+		shared_data::pt_.set_old_dir(ui::oldDir);
 
 		// Initialize common controls
 		INITCOMMONCONTROLSEX icex;
@@ -726,7 +721,7 @@ namespace ui {
 
 		if (!RegisterClassEx(wndclass)) {
 			MessageBox(NULL, TEXT("Failed to register window."), TEXT("Error"), MB_ICONWARNING | MB_OK);
-			sts_ui_.request_stop();
+			shared_data::sts_ui_.request_stop();
 			return ret;
 		}
 
@@ -792,7 +787,7 @@ namespace ui {
 
 		if (hwnd == NULL) {
 			MessageBox(NULL, TEXT("Failed to create window."), TEXT("Error"), MB_ICONWARNING | MB_OK);
-			sts_ui_.request_stop();
+			shared_data::sts_ui_.request_stop();
 			return ret;
 		}
 

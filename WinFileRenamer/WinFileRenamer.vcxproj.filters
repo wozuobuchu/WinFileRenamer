@@ -53,6 +53,9 @@
     <ClInclude Include="head.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="shared_data.hpp">
+      <Filter>头文件\SYS</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\img\cover.png">

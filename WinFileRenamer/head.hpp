@@ -4,5 +4,8 @@
 #pragma once
 
 #include "aop.hpp"
+#include "calc.hpp"
+#include "process_thread.hpp"
+
 
 #endif // !_HEAD_HPP
