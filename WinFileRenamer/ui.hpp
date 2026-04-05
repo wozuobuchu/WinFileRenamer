@@ -362,7 +362,6 @@ namespace ui {
 				SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
 			}
 
-
 			UpdateMenuEnabledState(hwnd);
 
 			return 0;
@@ -388,8 +387,7 @@ namespace ui {
 				// Call the process_lunch function
 				if (!shared_data::pt_.process_lunch()) {
 					MessageBox(hwnd, L"Process is already ongoing!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
-				}
-				else {
+				} else {
 					UpdateMenuEnabledState(hwnd);
 				}
 				break;

@@ -220,7 +220,7 @@ namespace calc {
 
     private:
         static const std::unordered_map<uint32_t, OptFunc>& table() {
-            static const std::unordered_map<uint32_t, OptFunc> t{
+            static const std::unordered_map<uint32_t, OptFunc> t {
                 // Z + Z -> Z
                 { make_key('Z', 'Z'), bind<Int64, Int64>([](const std::shared_ptr<Int64>& a, const std::shared_ptr<Int64>& b) {
                     return std::make_shared<Int64>((*a) + (*b));
@@ -402,24 +402,20 @@ namespace calc {
     };
 
 
-    std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> generate_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> expr_ptr) {
-        const std::vector<std::shared_ptr<calc::Element>>& expr = *expr_ptr;
-        std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> ret = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
-
+    std::vector<std::shared_ptr<calc::Element>> generate_rpn(const std::vector<std::shared_ptr<calc::Element>>& expr) {
+        std::vector<std::shared_ptr<calc::Element>> ret;
         std::stack<std::shared_ptr<calc::Element>> stk;
 
         size_t obj_cnt = 0;
         size_t opt_cnt = 0;
 
-        for (auto ptr : expr) {
+        for (auto& ptr : expr) {
             int64_t type = ptr->get_type();
             if (type == 'Z' || type == 'S' || type == 'X' || type == 'F') {
-                ret->emplace_back(ptr);
+                ret.emplace_back(ptr);
                 ++obj_cnt;
-
             } else if (type == '(') {
                 stk.push(ptr);
-
             } else if (type == ')') {
                 bool flag = false;
                 std::shared_ptr<calc::Element> top_ptr;
@@ -434,7 +430,7 @@ namespace calc {
                         flag = false;
                         break;
                     } else if (top_type == '#') {
-                        ret->emplace_back(top_ptr);
+                        ret.emplace_back(top_ptr);
                         ++opt_cnt;
                     }
                 }
@@ -454,7 +450,7 @@ namespace calc {
                         if (*now_ptr < *top_ptr) {
                             break;
                         } else {
-                            ret->emplace_back(top_ptr);
+                            ret.emplace_back(top_ptr);
                             ++opt_cnt;
                             stk.pop();
                         }
@@ -473,7 +469,7 @@ namespace calc {
 
             if (top_type == '(' || top_type == ')') throw std::runtime_error("Match bracket failed !");
 
-            ret->emplace_back(top_ptr);
+            ret.emplace_back(top_ptr);
             ++opt_cnt;
             stk.pop();
         }
@@ -487,25 +483,24 @@ namespace calc {
 
 
 
-    std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> preprocess_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> rpn_ptr, int64_t var_index, const std::wstring& fname) {
-        auto ret = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
-        const std::vector<std::shared_ptr<calc::Element>>& rpn = *rpn_ptr;
+    std::vector<std::shared_ptr<calc::Element>> preprocess_rpn(const std::vector<std::shared_ptr<calc::Element>>& rpn, int64_t var_index, const std::wstring& fname) {
+        std::vector<std::shared_ptr<calc::Element>> ret;
 
-        for (auto ptr : rpn) {
+        for (auto& ptr : rpn) {
             int64_t type = ptr->get_type();
             if (type == 'X') {
                 auto var_ptr = std::static_pointer_cast<calc::Var>(ptr);
                 int64_t var_type = var_ptr->get_var_type();
                 if (var_type == 'I') {
-                    ret->emplace_back(std::make_shared<calc::Int64>(var_index));
+                    ret.emplace_back(std::make_shared<calc::Int64>(var_index));
                 } else if (var_type == 'N') {
                     std::filesystem::path ofp = fname;
-                    ret->emplace_back(std::make_shared<calc::Str>(ofp.filename().wstring()));
+                    ret.emplace_back(std::make_shared<calc::Str>(ofp.filename().wstring()));
                 } else {
                     throw std::runtime_error("Unknown variable type in RPN !");
                 }
             } else {
-                ret->emplace_back(ptr);
+                ret.emplace_back(ptr);
             }
         }
 
@@ -515,12 +510,10 @@ namespace calc {
 
 
 
-    std::wstring calculate_rpn(std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> rpn_ptr) {
-        const std::vector<std::shared_ptr<calc::Element>>& rpn = *rpn_ptr;
-
+    std::wstring calculate_rpn(const std::vector<std::shared_ptr<calc::Element>>& rpn) {
         std::stack<std::shared_ptr<calc::Element>> stk;
 
-        for (auto ptr : rpn) {
+        for (auto& ptr : rpn) {
             int64_t type = ptr->get_type();
             if (type == 'Z' || type == 'S' || type == 'F') {
                 stk.push(ptr);

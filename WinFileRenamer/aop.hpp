@@ -73,7 +73,7 @@ public:
 	LockBox& operator=(const LockBox&) = delete;
 	LockBox& operator=(LockBox&&) = delete;
 
-	LockBox<_Tp>::LockProxy AcquireLock() {
+	[[nodiscard]] LockBox<_Tp>::LockProxy AcquireLock() {
 		return LockProxy(this);
 	}
 };

@@ -1,6 +1,7 @@
 ﻿#ifndef _PROCESS_THREAD_HPP
 #define _PROCESS_THREAD_HPP
 
+#include "aop.hpp"
 #include "calc.hpp"
 #include <thread>
 #include <mutex>
@@ -15,23 +16,20 @@
 
 namespace pt {
 
-static std::wstring MakeLongPath(const std::wstring& path) {
+inline static std::wstring MakeLongPath(const std::wstring& path) {
 	// If already in long path format, return as is
 	if (path.rfind(L"\\\\?\\", 0) == 0) {
 		return path;
 	}
-
 	// Handle UNC paths
 	if (path.size() >= 2 && path[0] == L'\\' && path[1] == L'\\') {
 		// \\server\share\xxx  ->  \\?\UNC\server\share\xxx
 		return L"\\\\?\\UNC\\" + path.substr(2);
 	}
-
 	// Handle drive letter paths
 	if (path.size() >= 2 && path[1] == L':') {
 		return L"\\\\?\\" + path;
 	}
-
 	// For other paths, return as is (could be relative paths)
 	return path;
 }
@@ -46,14 +44,11 @@ private:
 
 	std::atomic<int> state_;
 
-	std::mutex vec_filepath_cache_mtx;
-	std::vector<std::wstring> vec_filepath_cache;
+	aop::LockBox<std::vector<std::wstring>> vec_filepath_cache;
 
-	std::mutex input_expr_ptr_mtx;
-	std::shared_ptr<std::vector<std::shared_ptr<calc::Element>>> input_expr_ptr;
+	aop::LockBox<std::vector<std::shared_ptr<calc::Element>>> input_expr;
 
-	std::mutex res_wstr_mtx;
-	std::wstring res_wstr;
+	aop::LockBox<std::wstring> res_wstr;
 
 	inline static std::wstring old_dir;
 
@@ -65,20 +60,20 @@ private:
 		std::vector<std::wstring> vec_newname;
 
 		{
-			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
-			vec_filepath = vec_filepath_cache;
+			auto lck = vec_filepath_cache.AcquireLock();
+			vec_filepath = *lck;
 		}
 
 		bool calc_flag = false;
 		try {
-			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
+			auto lck = input_expr.AcquireLock();
 			// Check if pointer is valid before generating
-			if (!input_expr_ptr) throw std::runtime_error("Expression is empty!");
-			auto rpn_ptr = calc::generate_rpn(input_expr_ptr);
-			
+			if (lck->empty()) throw std::runtime_error("Expression is empty!");
+			std::vector<std::shared_ptr<calc::Element>> rpn = calc::generate_rpn(*lck);
+
 			for (size_t var_idex = 0; var_idex < vec_filepath.size(); ++var_idex) {
 				const std::wstring& ofname = vec_filepath[var_idex];
-				vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn_ptr, var_idex, ofname)));
+				vec_newname.emplace_back(calc::calculate_rpn(calc::preprocess_rpn(rpn, var_idex, ofname)));
 			}
 
 			calc_flag = true;
@@ -86,8 +81,8 @@ private:
 			std::wstringstream wss;
 			wss << re.what();
 			{
-				std::lock_guard<std::mutex> lck(res_wstr_mtx);
-				res_wstr = wss.str();
+				auto lck = res_wstr.AcquireLock();
+				*lck = wss.str();
 			}
 		}
 
@@ -110,22 +105,22 @@ private:
 				std::wstringstream wss;
 				wss << e.what();
 				{
-					std::lock_guard<std::mutex> lck(res_wstr_mtx);
-					res_wstr = wss.str();
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
 				}
 			} catch (const std::runtime_error& re) {
 				std::wstringstream wss;
 				wss << re.what();
 				{
-					std::lock_guard<std::mutex> lck(res_wstr_mtx);
-					res_wstr = wss.str();
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
 				}
 			} catch (...) {
 				std::wstringstream wss;
 				wss << "Unknown Error !";
 				{
-					std::lock_guard<std::mutex> lck(res_wstr_mtx);
-					res_wstr = wss.str();
+					auto lck = res_wstr.AcquireLock();
+					*lck = wss.str();
 				}
 			}
 		}
@@ -134,8 +129,8 @@ private:
 			std::wstringstream wss;
 			wss << L"Successfully renamed " << vsize << L" files.";
 			{
-				std::lock_guard<std::mutex> lck(res_wstr_mtx);
-				res_wstr = wss.str();
+				auto lck = res_wstr.AcquireLock();
+				*lck = wss.str();
 			}
 		}
 
@@ -225,8 +220,6 @@ public:
 	ProcessThread() {
 		msg_box_.store(false, std::memory_order_release);
 		state_.store(STATE_READY, std::memory_order_release);
-		// Initialize the expression pointer.
-		input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
 	}
 
 	virtual ~ProcessThread() {
@@ -239,8 +232,8 @@ public:
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
 		{
-			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
-			vec_filepath_cache.clear();
+			auto lck = vec_filepath_cache.AcquireLock();
+			lck->clear();
 		}
 
 		return true;
@@ -250,8 +243,8 @@ public:
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
 		{
-			std::lock_guard<std::mutex> lck(vec_filepath_cache_mtx);
-			vec_filepath_cache.emplace_back(filepath);
+			auto lck = vec_filepath_cache.AcquireLock();
+			lck->emplace_back(filepath);
 		}
 
 		return true;
@@ -261,14 +254,8 @@ public:
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
 		{
-			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
-			// Check before clearing, or re-create if null
-			if (input_expr_ptr) {
-				input_expr_ptr->clear();
-			}
-			else {
-				input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
-			}
+			auto lck = input_expr.AcquireLock();
+			lck->clear();
 		}
 
 		return true;
@@ -278,10 +265,9 @@ public:
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
 		{
-			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
-			// Check for valid pointer and non-empty vector
-			if (input_expr_ptr && !input_expr_ptr->empty()) {
-				input_expr_ptr->pop_back();
+			auto lck = input_expr.AcquireLock();
+			if (!lck->empty()) {
+				lck->pop_back();
 			}
 		}
 
@@ -293,20 +279,16 @@ public:
 		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return false;
 
 		{
-			std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
-			// Check in case pointer was reset
-			if (!input_expr_ptr) {
-				input_expr_ptr = std::make_shared<std::vector<std::shared_ptr<calc::Element>>>();
-			}
-			input_expr_ptr->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
+			auto lck = input_expr.AcquireLock();
+			lck->emplace_back(std::make_shared<PtrType>(std::forward<Args>(args)...));
 		}
 
 		return true;
 	}
 
 	std::wstring get_res_wstr() {
-		std::lock_guard<std::mutex> lck(res_wstr_mtx);
-		return res_wstr;
+		auto lck = res_wstr.AcquireLock();
+		return *lck;
 	}
 
 	int get_state() {
@@ -318,15 +300,15 @@ public:
 	}
 
 	std::wstring get_expression_str() {
-		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return L"?";
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return L"";
 
-		std::lock_guard<std::mutex> lck(input_expr_ptr_mtx);
-		if (!input_expr_ptr) {
+		auto lck = input_expr.AcquireLock();
+		if (lck->empty()) {
 			return L"";
 		}
 
 		std::wstringstream rewss;
-		for (const auto& elem : *input_expr_ptr) {
+		for (const auto& elem : *lck) {
 			int64_t type = elem->get_type();
 			try {
 				rewss << func_umap.at(type)(elem);
