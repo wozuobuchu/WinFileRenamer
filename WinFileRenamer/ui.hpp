@@ -7,6 +7,7 @@
 #include <commdlg.h>
 
 #include <string>
+#include <vector>
 #include <chrono>
 #include <fstream>
 #include <format>
@@ -87,9 +88,6 @@ namespace ui {
 
 	inline std::wstring oldDir;
 
-	enum class Lang { EN, ZH, ZH_TW, JA, RU };
-	inline Lang default_lang = Lang::EN;
-
 	struct UIStrings {
 		const wchar_t* fileMenu;
 		const wchar_t* exprMenu;
@@ -123,11 +121,6 @@ namespace ui {
 		const wchar_t* exprClear;
 
 		const wchar_t* optLang;
-		const wchar_t* optLangEn;
-		const wchar_t* optLangZh;
-		const wchar_t* optLangZhTw;
-		const wchar_t* optLangJa;
-		const wchar_t* optLangRu;
 		const wchar_t* optExit;
 
 		const wchar_t* labelFileList;
@@ -136,75 +129,89 @@ namespace ui {
 		const wchar_t* lvColFilePath;
 	};
 
-	inline UIStrings strings_en = {
-		L"File", L"Expression", L"Options",
-		L"Open", L"Clear", L"Submit Rename", L"Auto Match Subtitles",
-		L"Constants", L"Push String [INPUT]", L"Push Number [INPUT]", L"Push Minimum Num Length [INPUT]",
-		L"Variables", L"Push Index", L"Push OriginFileName",
-		L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
-		L"Brackets", L"Left Bracket (", L"Right Bracket )",
-		L"Delete Last", L"Clear Expression",
-		L"Language", L"English", L"Chinese (Simplified)", L"Chinese (Traditional)", L"Japanese", L"Russian", L"Exit",
-		L"Selected Files", L"Expression Preview", L"Input", L"File Path"
+	struct LanguageDef {
+		int cmdId;
+		const wchar_t* menuName;
+		UIStrings strings;
 	};
 
-	inline UIStrings strings_zh = {
-		L"文件", L"表达式", L"选项",
-		L"打开", L"清空", L"应用重命名", L"自动匹配字幕名",
-		L"常量", L"添加字符串 [输入框]", L"添加数字 [输入框]", L"添加最小数字格式 [输入框]",
-		L"变量", L"添加序号", L"添加原始文件名",
-		L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
-		L"括号", L"左括号 (", L"右括号 )",
-		L"删除上一个", L"清空表达式",
-		L"语言", L"English", L"中文(简体)", L"中文(繁体)", L"日本語", L"Русский", L"退出",
-		L"已选文件", L"表达式预览", L"输入框", L"文件路径"
+	inline constexpr std::array<LanguageDef, 5> supported_languages = {
+		LanguageDef {
+			ID_LANG_EN, L"English",
+			{
+				L"File", L"Expression", L"Options",
+				L"Open", L"Clear", L"Submit Rename", L"Auto Match Subtitles",
+				L"Constants", L"Push String [INPUT]", L"Push Number [INPUT]", L"Push Minimum Num Length [INPUT]",
+				L"Variables", L"Push Index", L"Push OriginFileName",
+				L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
+				L"Brackets", L"Left Bracket (", L"Right Bracket )",
+				L"Delete Last", L"Clear Expression",
+				L"Language", L"Exit",
+				L"Selected Files", L"Expression Preview", L"Input", L"File Path"
+			}
+		},
+		LanguageDef {
+			ID_LANG_ZH, L"中文(简体)",
+			{
+				L"文件", L"表达式", L"选项",
+				L"打开", L"清空", L"应用重命名", L"自动匹配字幕名",
+				L"常量", L"添加字符串 [输入框]", L"添加数字 [输入框]", L"添加最小数字格式 [输入框]",
+				L"变量", L"添加序号", L"添加原始文件名",
+				L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
+				L"括号", L"左括号 (", L"右括号 )",
+				L"删除上一个", L"清空表达式",
+				L"语言", L"退出",
+				L"已选文件", L"表达式预览", L"输入框", L"文件路径"
+			}
+		},
+		LanguageDef {
+			ID_LANG_ZH_TW, L"中文(繁體)",
+			{
+				L"檔案", L"運算式", L"選項",
+				L"開啟", L"清空", L"套用重新命名", L"自動配對字幕名",
+				L"常數", L"加入字串 [輸入框]", L"加入數字 [輸入框]", L"加入最小數字格式 [輸入框]",
+				L"變數", L"加入序號", L"加入原始檔名",
+				L"運算子", L"加 (+)", L"減 (-)", L"乘 (*)", L"除 (/)",
+				L"括號", L"左括號 (", L"右括號 )",
+				L"刪除上一個", L"清空運算式",
+				L"語言", L"退出",
+				L"已選檔案", L"運算式預覽", L"輸入框", L"檔案路徑"
+			}
+		},
+		LanguageDef {
+			ID_LANG_JA, L"日本語",
+			{
+				L"ファイル", L"式", L"オプション",
+				L"開く", L"クリア", L"名前変更を適用", L"字幕を自動マッチ",
+				L"定数", L"文字列を追加 [入力]", L"数値を追加 [入力]", L"最小数値形式を追加 [入力]",
+				L"変数", L"連番を追加", L"元のファイル名を追加",
+				L"演算子", L"加算 (+)", L"減算 (-)", L"乗算 (*)", L"除算 (/)",
+				L"括弧", L"左括弧 (", L"右括弧 )",
+				L"最後を削除", L"式をクリア",
+				L"言語", L"終了",
+				L"選択されたファイル", L"式のプレビュー", L"入力", L"ファイルパス"
+			}
+		},
+		LanguageDef {
+			ID_LANG_RU, L"Русский",
+			{
+				L"Файл", L"Выражение", L"Настройки",
+				L"Открыть", L"Очистить", L"Применить", L"Авто-подбор субтитров",
+				L"Константы", L"Добавить строку [ВВОД]", L"Добавить число [ВВОД]", L"Добавить мин. длину числа [ВВОД]",
+				L"Переменные", L"Добавить индекс", L"Добавить исх. имя файла",
+				L"Операторы", L"Сложение (+)", L"Вычитание (-)", L"Умножение (*)", L"Деление (/)",
+				L"Скобки", L"Левая скобка (", L"Правая скобка )",
+				L"Удалить последнее", L"Очистить выражение",
+				L"Язык", L"Выход",
+				L"Выбранные файлы", L"Предпросмотр выражения", L"Ввод", L"Путь к файлу"
+			}
+		}
 	};
 
-	inline UIStrings strings_zh_tw = {
-		L"檔案", L"運算式", L"選項",
-		L"開啟", L"清空", L"套用重新命名", L"自動配對字幕名",
-		L"常數", L"加入字串 [輸入框]", L"加入數字 [輸入框]", L"加入最小數字格式 [輸入框]",
-		L"變數", L"加入序號", L"加入原始檔名",
-		L"運算子", L"加 (+)", L"減 (-)", L"乘 (*)", L"除 (/)",
-		L"括號", L"左括號 (", L"右括號 )",
-		L"刪除上一個", L"清空運算式",
-		L"語言", L"English", L"中文(簡體)", L"中文(繁體)", L"日本語", L"Русский", L"退出",
-		L"已選檔案", L"運算式預覽", L"輸入框", L"檔案路徑"
-	};
-
-	inline UIStrings strings_ja = {
-		L"ファイル", L"式", L"オプション",
-		L"開く", L"クリア", L"名前変更を適用", L"字幕を自動マッチ",
-		L"定数", L"文字列を追加 [入力]", L"数値を追加 [入力]", L"最小数値形式を追加 [入力]",
-		L"変数", L"連番を追加", L"元のファイル名を追加",
-		L"演算子", L"加算 (+)", L"減算 (-)", L"乗算 (*)", L"除算 (/)",
-		L"括弧", L"左括弧 (", L"右括弧 )",
-		L"最後を削除", L"式をクリア",
-		L"言語", L"English", L"中文(簡体)", L"中文(繁体)", L"日本語", L"Русский", L"終了",
-		L"選択されたファイル", L"式のプレビュー", L"入力", L"ファイルパス"
-	};
-
-	inline UIStrings strings_ru = {
-		L"Файл", L"Выражение", L"Настройки",
-		L"Открыть", L"Очистить", L"Применить", L"Авто-подбор субтитров",
-		L"Константы", L"Добавить строку [ВВОД]", L"Добавить число [ВВОД]", L"Добавить мин. длину числа [ВВОД]",
-		L"Переменные", L"Добавить индекс", L"Добавить исх. имя файла",
-		L"Операторы", L"Сложение (+)", L"Вычитание (-)", L"Умножение (*)", L"Деление (/)",
-		L"Скобки", L"Левая скобка (", L"Правая скобка )",
-		L"Удалить последнее", L"Очистить выражение",
-		L"Язык", L"English", L"Chinese (Simplified)", L"Chinese (Traditional)", L"Japanese", L"Русский", L"Выход",
-		L"Выбранные файлы", L"Предпросмотр выражения", L"Ввод", L"Путь к файлу"
-	};
+	inline size_t current_lang_index = 0;
 
 	inline const UIStrings& GetStrings() {
-		switch (default_lang) {
-			case Lang::ZH: return strings_zh;
-			case Lang::ZH_TW: return strings_zh_tw;
-			case Lang::JA: return strings_ja;
-			case Lang::RU: return strings_ru;
-			case Lang::EN:
-			default: return strings_en;
-		}
+		return supported_languages[current_lang_index].strings;
 	}
 
 	struct RegisterReturn {
@@ -250,6 +257,7 @@ namespace ui {
 		HMENU hFileMenu = CreatePopupMenu();
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_OPEN, s.fileOpen);
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, s.fileClear);
+		AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, s.fileSubmit);
 		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT_AUTO, s.fileSubmitAuto);
 
@@ -283,11 +291,10 @@ namespace ui {
 		AppendMenu(hEditMenu, MF_STRING, ID_EDIT_CLEAR, s.exprClear);
 
 		HMENU hLangMenu = CreatePopupMenu();
-		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::EN ? MF_CHECKED : MF_UNCHECKED), ID_LANG_EN, s.optLangEn);
-		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::ZH ? MF_CHECKED : MF_UNCHECKED), ID_LANG_ZH, s.optLangZh);
-		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::ZH_TW ? MF_CHECKED : MF_UNCHECKED), ID_LANG_ZH_TW, s.optLangZhTw);
-		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::JA ? MF_CHECKED : MF_UNCHECKED), ID_LANG_JA, s.optLangJa);
-		AppendMenu(hLangMenu, MF_STRING | (default_lang == Lang::RU ? MF_CHECKED : MF_UNCHECKED), ID_LANG_RU, s.optLangRu);
+		for (size_t i = 0; i < supported_languages.size(); ++i) {
+			UINT flags = MF_STRING | (current_lang_index == i ? MF_CHECKED : MF_UNCHECKED);
+			AppendMenu(hLangMenu, flags, supported_languages[i].cmdId, supported_languages[i].menuName);
+		}
 
 		HMENU hOptionMenu = CreatePopupMenu();
 		AppendMenu(hOptionMenu, MF_POPUP, (UINT_PTR)hLangMenu, s.optLang);
@@ -575,8 +582,22 @@ namespace ui {
 
 			case WM_COMMAND:
 			{
+				int cmd = LOWORD(wParam);
+
+				// Check if the command is a language switch
+				bool lang_changed = false;
+				for (size_t i = 0; i < supported_languages.size(); ++i) {
+					if (cmd == supported_languages[i].cmdId) {
+						current_lang_index = i;
+						UpdateLanguageUI(hwnd);
+						lang_changed = true;
+						break;
+					}
+				}
+				if (lang_changed) return 0;
+
 				// Handle menu commands
-				switch (LOWORD(wParam)) {
+				switch (cmd) {
 
 					case ID_FILE_OPEN:
 					{
@@ -621,42 +642,6 @@ namespace ui {
 						shared_data::sts_.request_stop();
 						break;
 					}
-
-					case ID_LANG_EN:
-					{
-						default_lang = Lang::EN;
-						UpdateLanguageUI(hwnd);
-						break;
-					}
-
-					case ID_LANG_ZH:
-					{
-						default_lang = Lang::ZH;
-						UpdateLanguageUI(hwnd);
-						break;
-					}
-
-					case ID_LANG_ZH_TW:
-					{
-						default_lang = Lang::ZH_TW;
-						UpdateLanguageUI(hwnd);
-						break;
-					}
-
-					case ID_LANG_JA:
-					{
-						default_lang = Lang::JA;
-						UpdateLanguageUI(hwnd);
-						break;
-					}
-
-					case ID_LANG_RU:
-					{
-						default_lang = Lang::RU;
-						UpdateLanguageUI(hwnd);
-						break;
-					}
-
 
 					// Handlers for Edit Menu
 					case ID_EDIT_PUSH_STR:
