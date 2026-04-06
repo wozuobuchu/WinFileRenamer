@@ -139,6 +139,11 @@
     <ClInclude Include="resource1.h" />
     <ClInclude Include="shared_data.hpp" />
     <ClInclude Include="ui.hpp" />
+    <ClInclude Include="ui_constants.hpp" />
+    <ClInclude Include="ui_inputbox.hpp" />
+    <ClInclude Include="ui_language.hpp" />
+    <ClInclude Include="ui_methods.hpp" />
+    <ClInclude Include="ui_state.hpp" />
     <ClInclude Include="update_main.hpp" />
   </ItemGroup>
   <ItemGroup>

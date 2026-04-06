@@ -56,6 +56,21 @@
     <ClInclude Include="shared_data.hpp">
       <Filter>头文件\SYS</Filter>
     </ClInclude>
+    <ClInclude Include="ui_state.hpp">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_constants.hpp">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_inputbox.hpp">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_language.hpp">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_methods.hpp">
+      <Filter>头文件\UI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon1.ico">
