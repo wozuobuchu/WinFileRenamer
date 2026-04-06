@@ -418,27 +418,27 @@ public:
 		return msg_box_.exchange(false, std::memory_order_acq_rel);
 	}
 
-	std::wstring get_expression_str() {
-		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return L"";
+	std::vector<std::pair<int64_t, std::wstring>> get_expression_tokens() {
+		if (state_.load(std::memory_order_acquire) == STATE_ONGOING) return {};
 
 		auto lck = input_expr.AcquireLock();
 		if (lck->empty()) {
-			return L"";
+			return {};
 		}
 
-		std::wstringstream rewss;
+		std::vector<std::pair<int64_t, std::wstring>> tokens;
 		for (const auto& elem : *lck) {
 			int64_t type = elem->get_type();
+			std::wstring txt;
 			try {
-				rewss << func_umap.at(type)(elem);
+				txt = func_umap.at(type)(elem);
 			} catch (...) {
-				rewss << L"UNKNOWN ERROR? ";
+				txt = L"UNKNOWN ERROR? ";
 			}
-
-
+			tokens.emplace_back(type, txt);
 		}
 
-		return rewss.str();
+		return tokens;
 	}
 
 	void join() {

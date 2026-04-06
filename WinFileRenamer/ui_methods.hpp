@@ -124,8 +124,7 @@ namespace ui {
 	inline void UpdateExpressionDisplay() {
 		try {
 			if (hExprDisplay_) {
-				std::wstring exprStr = shared_data::pt_.get_expression_str();
-				SetWindowTextW(hExprDisplay_, exprStr.c_str());
+				SendMessage(hExprDisplay_, WM_APP + 1, 0, 0); // WM_UPDATE_EXPR
 			}
 		} catch (...) {
 			MessageBox(NULL, L"UI Update error!", L"Warning", MB_OK | MB_ICONWARNING | MB_TOPMOST);
