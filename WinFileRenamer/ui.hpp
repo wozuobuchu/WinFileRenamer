@@ -42,12 +42,12 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 namespace ui {
 
 	struct TokenBlock {
-		std::wstring txt;
-		int64_t type;
-		RECT rc;
-		COLORREF bgCol;
-		COLORREF borderCol;
-		COLORREF textCol;
+		std::wstring txt = L"";
+		int64_t type = 0;
+		RECT rc = {0, 0, 0, 0};
+		COLORREF bgCol = RGB(0, 0, 0);
+		COLORREF borderCol = RGB(0, 0, 0);
+		COLORREF textCol = RGB(0, 0, 0);
 	};
 
 	struct PreviewState {
@@ -88,7 +88,17 @@ namespace ui {
 			}
 			case WM_SIZE:
 			{
-				SendMessage(hwnd, WM_UPDATE_EXPR, 0, 0);
+				if (wParam == SIZE_MINIMIZED) return 0;
+				KillTimer(hwnd, 8888);
+				SetTimer(hwnd, 8888, 30, NULL);
+				return 0;
+			}
+			case WM_TIMER:
+			{
+				if (wParam == 8888) {
+					KillTimer(hwnd, 8888);
+					SendMessage(hwnd, WM_UPDATE_EXPR, 0, 0);
+				}
 				return 0;
 			}
 			case WM_UPDATE_EXPR:
