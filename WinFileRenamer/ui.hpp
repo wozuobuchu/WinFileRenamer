@@ -74,14 +74,11 @@ namespace ui {
 	static HWND hListView_ = NULL;
 	// Handles for new controls
 	static HWND hExprDisplay_ = NULL;
-	static HWND hInputEdit_ = NULL;
 
 	static HWND hLabelFileList_ = NULL;
 	static HWND hLabelExpr_ = NULL;
-	static HWND hLabelInput_ = NULL;
 
 	constexpr int LABEL_HEIGHT = 24;
-	constexpr int INPUT_HEIGHT = 40;
 
 	constexpr int CONTENT_MARGIN_H = 40;
 	constexpr int CONTENT_MAX_WIDTH = 1000;
@@ -141,7 +138,7 @@ namespace ui {
 			{
 				L"File", L"Expression", L"Options",
 				L"Open", L"Clear", L"Submit Rename", L"Auto Match Subtitles",
-				L"Constants", L"Push String [INPUT]", L"Push Number [INPUT]", L"Push Minimum Num Length [INPUT]",
+				L"Constants", L"Push String...", L"Push Number...", L"Push Minimum Num Length...",
 				L"Variables", L"Push Index", L"Push OriginFileName",
 				L"Operators", L"Add (+)", L"Sub (-)", L"Mul (*)", L"Div (/)",
 				L"Brackets", L"Left Bracket (", L"Right Bracket )",
@@ -155,7 +152,7 @@ namespace ui {
 			{
 				L"文件", L"表达式", L"选项",
 				L"打开", L"清空", L"应用重命名", L"自动匹配字幕名",
-				L"常量", L"添加字符串 [输入框]", L"添加数字 [输入框]", L"添加最小数字格式 [输入框]",
+				L"常量", L"添加字符串...", L"添加数字...", L"添加最小数字格式...",
 				L"变量", L"添加序号", L"添加原始文件名",
 				L"运算符", L"加 (+)", L"减 (-)", L"乘 (*)", L"除 (/)",
 				L"括号", L"左括号 (", L"右括号 )",
@@ -169,7 +166,7 @@ namespace ui {
 			{
 				L"檔案", L"運算式", L"選項",
 				L"開啟", L"清空", L"套用重新命名", L"自動配對字幕名",
-				L"常數", L"加入字串 [輸入框]", L"加入數字 [輸入框]", L"加入最小數字格式 [輸入框]",
+				L"常數", L"加入字串...", L"加入數字...", L"加入最小數字格式...",
 				L"變數", L"加入序號", L"加入原始檔名",
 				L"運算子", L"加 (+)", L"減 (-)", L"乘 (*)", L"除 (/)",
 				L"括號", L"左括號 (", L"右括號 )",
@@ -183,7 +180,7 @@ namespace ui {
 			{
 				L"ファイル", L"式", L"オプション",
 				L"開く", L"クリア", L"名前変更を適用", L"字幕を自動マッチ",
-				L"定数", L"文字列を追加 [入力]", L"数値を追加 [入力]", L"最小数値形式を追加 [入力]",
+				L"定数", L"文字列を追加...", L"数値を追加...", L"最小数値形式を追加...",
 				L"変数", L"連番を追加", L"元のファイル名を追加",
 				L"演算子", L"加算 (+)", L"減算 (-)", L"乗算 (*)", L"除算 (/)",
 				L"括弧", L"左括弧 (", L"右括弧 )",
@@ -197,7 +194,7 @@ namespace ui {
 			{
 				L"Файл", L"Выражение", L"Настройки",
 				L"Открыть", L"Очистить", L"Применить", L"Авто-подбор субтитров",
-				L"Константы", L"Добавить строку [ВВОД]", L"Добавить число [ВВОД]", L"Добавить мин. длину числа [ВВОД]",
+				L"Константы", L"Добавить строку...", L"Добавить число...", L"Добавить мин. длину числа...",
 				L"Переменные", L"Добавить индекс", L"Добавить исх. имя файла",
 				L"Операторы", L"Сложение (+)", L"Вычитание (-)", L"Умножение (*)", L"Деление (/)",
 				L"Скобки", L"Левая скобка (", L"Правая скобка )",
@@ -313,7 +310,6 @@ namespace ui {
 		const auto& s = GetStrings();
 		if (hLabelFileList_) SetWindowTextW(hLabelFileList_, s.labelFileList);
 		if (hLabelExpr_) SetWindowTextW(hLabelExpr_, s.labelExprPreview);
-		if (hLabelInput_) SetWindowTextW(hLabelInput_, s.labelInput);
 
 		if (hListView_) {
 			LVCOLUMNW lvc;
@@ -365,6 +361,98 @@ namespace ui {
 		return true;
 	}
 
+	inline std::wstring g_inputResult;
+	inline bool g_inputOk = false;
+
+	inline LRESULT CALLBACK InputWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+		switch(msg) {
+			case WM_COMMAND:
+				if (LOWORD(wParam) == IDOK) {
+					wchar_t buf[256];
+					GetDlgItemTextW(hwnd, 101, buf, 256);
+					g_inputResult = buf;
+					g_inputOk = true;
+					DestroyWindow(hwnd);
+				}
+				else if (LOWORD(wParam) == IDCANCEL) {
+					g_inputOk = false;
+					DestroyWindow(hwnd);
+				}
+				break;
+			case WM_CLOSE:
+				g_inputOk = false;
+				DestroyWindow(hwnd);
+				break;
+			default:
+				return DefWindowProcW(hwnd, msg, wParam, lParam);
+		}
+		return 0;
+	}
+
+	inline bool ShowInputBox(HWND hParent, const std::wstring& title, const std::wstring& prompt, std::wstring& outResult) {
+		static bool registered = false;
+		if (!registered) {
+			WNDCLASSW wc = {0};
+			wc.lpfnWndProc = InputWndProc;
+			wc.hInstance = GetModuleHandle(NULL);
+			wc.hbrBackground = (HBRUSH)(COLOR_WINDOW);
+			wc.lpszClassName = L"CustomInputBoxClass";
+			RegisterClassW(&wc);
+			registered = true;
+		}
+
+		g_inputOk = false;
+		g_inputResult.clear();
+
+		HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, L"CustomInputBoxClass", title.c_str(), 
+			WS_VISIBLE | WS_SYSMENU | WS_CAPTION, 
+			0, 0, 350, 150, hParent, NULL, GetModuleHandle(NULL), NULL);
+
+		HWND hPrompt = CreateWindowExW(0, L"STATIC", prompt.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 
+			10, 10, 310, 20, hwnd, NULL, GetModuleHandle(NULL), NULL);
+
+		HWND hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, 
+			10, 40, 310, 25, hwnd, (HMENU)101, GetModuleHandle(NULL), NULL);
+
+		HWND hOk = CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON, 
+			150, 75, 80, 25, hwnd, (HMENU)IDOK, GetModuleHandle(NULL), NULL);
+
+		HWND hCancel = CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 
+			240, 75, 80, 25, hwnd, (HMENU)IDCANCEL, GetModuleHandle(NULL), NULL);
+
+		HFONT hFont = (HFONT)SendMessage(hParent, WM_GETFONT, 0, 0);
+		if (!hFont) hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+		SendMessage(hPrompt, WM_SETFONT, (WPARAM)hFont, FALSE);
+		SendMessage(hEdit, WM_SETFONT, (WPARAM)hFont, FALSE);
+		SendMessage(hOk, WM_SETFONT, (WPARAM)hFont, FALSE);
+		SendMessage(hCancel, WM_SETFONT, (WPARAM)hFont, FALSE);
+
+		RECT pr, cr;
+		GetWindowRect(hParent, &pr);
+		GetWindowRect(hwnd, &cr);
+		int x = pr.left + (pr.right - pr.left) / 2 - (cr.right - cr.left) / 2;
+		int y = pr.top + (pr.bottom - pr.top) / 2 - (cr.bottom - cr.top) / 2;
+		SetWindowPos(hwnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+		EnableWindow(hParent, FALSE);
+		SetFocus(hEdit);
+
+		MSG msg;
+		while (IsWindow(hwnd) && GetMessage(&msg, NULL, 0, 0) && (!shared_data::sts_.stop_requested())) {
+			if (!IsDialogMessage(hwnd, &msg)) {
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+
+		EnableWindow(hParent, TRUE);
+		SetActiveWindow(hParent);
+
+		if (g_inputOk) {
+			outResult = g_inputResult;
+		}
+		return g_inputOk;
+	}
 
 	// Helper function to handle the "Open File" dialog logic
 	inline void HandleFileOpen(HWND hwnd) {
@@ -518,9 +606,9 @@ namespace ui {
 					NULL
 				);
 
-				// Create Expression Display (Bottom Half - Top)
+				// Create Expression Display (Bottom Half)
 				int exprDisplayY = bottomY + 4 + LABEL_HEIGHT;
-				int exprDisplayHeight = bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT * 2 - 8;
+				int exprDisplayHeight = bottomHeight - LABEL_HEIGHT - 12; // Adjust padding
 				if (exprDisplayHeight < 0) exprDisplayHeight = 0;
 
 				hExprDisplay_ = CreateWindowEx(
@@ -535,43 +623,11 @@ namespace ui {
 					NULL
 				);
 
-				int inputLabelY = bottomY + bottomHeight - INPUT_HEIGHT - LABEL_HEIGHT - 4;
-				if (inputLabelY < exprDisplayY) inputLabelY = exprDisplayY;
-
-				hLabelInput_ = CreateWindowEx(
-					0,
-					L"STATIC",
-					L"Input",
-					WS_CHILD | WS_VISIBLE | SS_LEFT,
-					8, inputLabelY,
-					UI_WIDTH - 16, LABEL_HEIGHT,
-					hwnd,
-					NULL,
-					GetModuleHandle(NULL),
-					NULL
-				);
-
-				int inputEditY = inputLabelY + LABEL_HEIGHT;
-
-				hInputEdit_ = CreateWindowEx(
-					WS_EX_CLIENTEDGE,
-					L"EDIT",
-					L"",
-					WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_MULTILINE,
-					0, inputEditY, UI_WIDTH, INPUT_HEIGHT, // Initial size
-					hwnd,
-					(HMENU)(UINT_PTR)ID_INPUT_EDIT,
-					GetModuleHandle(NULL),
-					NULL
-				);
-
 				if (hFont) {
 					SendMessage(hLabelFileList_, WM_SETFONT, (WPARAM)hFont, TRUE);
 					SendMessage(hLabelExpr_, WM_SETFONT, (WPARAM)hFont, TRUE);
-					SendMessage(hLabelInput_, WM_SETFONT, (WPARAM)hFont, TRUE);
 					SendMessage(hListView_, WM_SETFONT, (WPARAM)hFont, TRUE);
 					SendMessage(hExprDisplay_, WM_SETFONT, (WPARAM)hFont, TRUE);
-					SendMessage(hInputEdit_, WM_SETFONT, (WPARAM)hFont, TRUE);
 				}
 
 				UpdateMenuEnabledState(hwnd);
@@ -646,31 +702,35 @@ namespace ui {
 					// Handlers for Edit Menu
 					case ID_EDIT_PUSH_STR:
 					{
-						wchar_t buffer[256] = { 0 };
-						GetWindowTextW(hInputEdit_, buffer, 256);
-						if (!shared_data::pt_.push_expr<calc::Str>(std::wstring(buffer))) {
-							GuardUiOp(hwnd, false);
-							break;
+						std::wstring inputStr;
+						if (ShowInputBox(hwnd, GetStrings().labelInput, GetStrings().exprPushStr, inputStr)) {
+							if (inputStr.empty()) {
+								MessageBoxW(hwnd, L"Input cannot be empty.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+								break;
+							}
+							if (!shared_data::pt_.push_expr<calc::Str>(inputStr)) {
+								GuardUiOp(hwnd, false);
+								break;
+							}
+							UpdateExpressionDisplay();
 						}
-						UpdateExpressionDisplay();
-						SetWindowTextW(hInputEdit_, L""); // Clear input box
 						break;
 					}
 
 					case ID_EDIT_PUSH_NUM:
 					{
-						wchar_t buffer[256] = { 0 };
-						GetWindowTextW(hInputEdit_, buffer, 256);
-						try {
-							int64_t val = std::stoll(std::wstring(buffer));
-							if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
-								GuardUiOp(hwnd, false);
-								break;
+						std::wstring inputStr;
+						if (ShowInputBox(hwnd, GetStrings().labelInput, GetStrings().exprPushNum, inputStr)) {
+							try {
+								int64_t val = std::stoll(inputStr);
+								if (!shared_data::pt_.push_expr<calc::Int64>(val)) {
+									GuardUiOp(hwnd, false);
+									break;
+								}
+								UpdateExpressionDisplay();
+							} catch (...) {
+								MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 							}
-							UpdateExpressionDisplay();
-							SetWindowTextW(hInputEdit_, L""); // Clear input box
-						} catch (...) {
-							MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 						}
 						break;
 					}
@@ -694,22 +754,22 @@ namespace ui {
 					}
 					case ID_EDIT_PUSH_NUM_FORMAT:
 					{
-						wchar_t buffer[256] = { 0 };
-						GetWindowTextW(hInputEdit_, buffer, 256);
-						try {
-							int64_t val = std::stoll(std::wstring(buffer));
-							if ((val < 0) || (val > 100)) {
-								MessageBoxW(hwnd, L"Number format out of range.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
-								break;
+						std::wstring inputStr;
+						if (ShowInputBox(hwnd, GetStrings().labelInput, GetStrings().exprPushFmt, inputStr)) {
+							try {
+								int64_t val = std::stoll(inputStr);
+								if ((val < 0) || (val > 100)) {
+									MessageBoxW(hwnd, L"Number format out of range.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
+									break;
+								}
+								if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
+									GuardUiOp(hwnd, false);
+									break;
+								}
+								UpdateExpressionDisplay();
+							} catch (...) {
+								MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 							}
-							if (!shared_data::pt_.push_expr<calc::Int64_Format>(val)) {
-								GuardUiOp(hwnd, false);
-								break;
-							}
-							UpdateExpressionDisplay();
-							SetWindowTextW(hInputEdit_, L""); // Clear input box
-						} catch (...) {
-							MessageBoxW(hwnd, L"Invalid number. Please enter a valid 64-bit integer.", L"Error", MB_OK | MB_ICONERROR | MB_TOPMOST);
 						}
 						break;
 					}
@@ -819,7 +879,7 @@ namespace ui {
 					if (contentWidth < 100) contentWidth = 100;
 
 					// Top section: List View (takes about 50%)
-					int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - INPUT_HEIGHT - 3 * spacingY) * 6 / 10;
+					int listHeight = (height - 2 * marginY - 2 * LABEL_HEIGHT - 2 * spacingY) * 6 / 10;
 					if (listHeight < 100) listHeight = 100;
 
 					int currentY = marginY;
@@ -842,7 +902,7 @@ namespace ui {
 					currentY += LABEL_HEIGHT;
 
 					// Middle section: Expression Display
-					int exprHeight = (height - currentY - marginY - LABEL_HEIGHT - INPUT_HEIGHT - spacingY);
+					int exprHeight = (height - currentY - marginY);
 					// Guarantee some height
 					if (exprHeight < 60) {
 						exprHeight = 60;
@@ -850,16 +910,6 @@ namespace ui {
 
 					if (hExprDisplay_) {
 						MoveWindow(hExprDisplay_, contentX, currentY, contentWidth, exprHeight, TRUE);
-					}
-					currentY += exprHeight + spacingY;
-
-					if (hLabelInput_) {
-						MoveWindow(hLabelInput_, contentX, currentY, contentWidth, LABEL_HEIGHT, TRUE);
-					}
-					currentY += LABEL_HEIGHT;
-
-					if (hInputEdit_) {
-						MoveWindow(hInputEdit_, contentX, currentY, contentWidth, INPUT_HEIGHT, TRUE);
 					}
 				}
 				return 0;
