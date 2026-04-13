@@ -54,6 +54,7 @@ namespace ui {
 		AppendMenu(hFileMenu, MF_STRING, ID_FILE_CLEAR, s.fileClear);
 		AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT, s.fileSubmit);
+		AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hFileMenu, MF_STRING, ID_OPTIONS_SUBMIT_AUTO, s.fileSubmitAuto);
 
 		HMENU hConstMenu = CreatePopupMenu();
@@ -95,6 +96,7 @@ namespace ui {
 		AppendMenu(hOptionMenu, MF_POPUP, (UINT_PTR)hLangMenu, s.optLang);
 		AppendMenu(hOptionMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hOptionMenu, MF_STRING, ID_OPTIONS_HELP, s.optHelp);
+		AppendMenu(hOptionMenu, MF_SEPARATOR, NULL, NULL);
 		AppendMenu(hOptionMenu, MF_STRING, ID_OPTIONS_EXIT, s.optExit);
 
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hFileMenu, s.fileMenu);

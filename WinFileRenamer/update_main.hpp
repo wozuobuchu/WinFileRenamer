@@ -7,6 +7,7 @@ inline void update_main_ui_LOOP(ui::RegisterReturn rrt) {
 
 	WNDCLASSEX* wndclass = rrt.wndclass;
 	HWND hwnd = rrt.hwnd;
+	(void)wndclass;
 
 	calc::warmup_operator_tables();
 

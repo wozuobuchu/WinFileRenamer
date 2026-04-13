@@ -268,12 +268,14 @@ private:
 		{
 			'(',
 			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				(void)elem;
 				return L"( ";
 			}
 		},
 		{
 			')',
 			[](const std::unique_ptr<calc::Element>& elem) -> std::wstring {
+				(void)elem;
 				return L") ";
 			}
 		},
