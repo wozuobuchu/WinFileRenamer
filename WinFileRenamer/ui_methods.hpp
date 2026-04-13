@@ -93,6 +93,8 @@ namespace ui {
 
 		HMENU hOptionMenu = CreatePopupMenu();
 		AppendMenu(hOptionMenu, MF_POPUP, (UINT_PTR)hLangMenu, s.optLang);
+		AppendMenu(hOptionMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(hOptionMenu, MF_STRING, ID_OPTIONS_HELP, s.optHelp);
 		AppendMenu(hOptionMenu, MF_STRING, ID_OPTIONS_EXIT, s.optExit);
 
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hFileMenu, s.fileMenu);

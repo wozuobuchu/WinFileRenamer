@@ -497,6 +497,12 @@ namespace ui {
 						break;
 					}
 
+					case ID_OPTIONS_HELP:
+					{
+						MessageBoxW(hwnd, GetHelpText().c_str(), GetStrings().optHelp, MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+						break;
+					}
+
 					// Handlers for Edit Menu
 					case ID_EDIT_PUSH_STR:
 					{

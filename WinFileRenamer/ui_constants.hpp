@@ -13,6 +13,7 @@ namespace ui {
 	constexpr int ID_OPTIONS_SUBMIT_AUTO = 1005;
 
 	constexpr int ID_OPTIONS_EXIT = 9002;
+	constexpr int ID_OPTIONS_HELP = 9008;
 
 	constexpr int ID_EDIT_PUSH_STR = 2001;
 	constexpr int ID_EDIT_PUSH_NUM = 2002;
