@@ -147,8 +147,7 @@
     <ClInclude Include="update_main.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\img\pic_cn.png" />
-    <Image Include="..\img\pic_en.png" />
+    <Image Include="..\img\pic.png" />
     <Image Include="icon1.ico" />
   </ItemGroup>
   <ItemGroup>

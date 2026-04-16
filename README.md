@@ -10,7 +10,7 @@
 <a name="english"></a>
 ## 🇬🇧 English
 
-<img src="./img/pic_en.png" alt="en"> <br>
+<img src="./img/pic.png" alt="en"> <br>
 
 ### Introduction
 **WinFileRenamer** is a lightweight, efficient, and flexible batch file renaming tool for Windows, built with C++ and the native Windows API. It allows you to rename multiple files simultaneously using custom expressions, or simply automatically match and rename subtitle files to match their corresponding video files.
@@ -71,7 +71,7 @@ If you have a folder with multiple videos and subtitles with mismatched names, l
 <a name="中文"></a>
 ## 🇨🇳 中文
 
-<img src="./img/pic_cn.png" alt="en"> <br>
+<img src="./img/pic.png" alt="en"> <br>
 
 ### 简介
 **WinFileRenamer** 是一款轻量、高效且灵活的 Windows 批量文件重命名工具。使用 C++ 和原生 Windows API 构建。它允许您通过自定义“计算表达式”来批量重命名多个文件，或者使用一键自动匹配字幕文件的功能。

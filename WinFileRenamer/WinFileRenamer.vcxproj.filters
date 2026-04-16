@@ -76,10 +76,7 @@
     <Image Include="icon1.ico">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="..\img\pic_cn.png">
-      <Filter>源文件</Filter>
-    </Image>
-    <Image Include="..\img\pic_en.png">
+    <Image Include="..\img\pic.png">
       <Filter>源文件</Filter>
     </Image>
   </ItemGroup>
